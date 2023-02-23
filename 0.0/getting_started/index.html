@@ -220,10 +220,8 @@ deploy<span class=w> </span>the<span class=w> </span>docs,<span class=w> </span>
 
 <span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Configure git</span>
 <span class=w>        </span><span class=nt>run</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">|</span>
-<span class=w>          </span><span class=no>git config user.name &quot;Fabio Muratore&quot;</span>
-<span class=w>          </span><span class=no>git config user.email &quot;robot-learning@famura.net&quot;</span>
-<span class=c1>#          git config user.name &quot;${GITHUB_ACTOR}&quot;</span>
-<span class=c1>#          git config user.email &quot;${GITHUB_ACTOR}@users.noreply.github.com&quot;</span>
+<span class=w>          </span><span class=no>git config user.name &quot;${GITHUB_ACTOR}&quot;</span>
+<span class=w>          </span><span class=no>git config user.email &quot;${GITHUB_ACTOR}@users.noreply.github.com&quot;</span>
 
 <span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Install dependencies</span>
 <span class=w>        </span><span class=nt>run</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">poetry install</span>
