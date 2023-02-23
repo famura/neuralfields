@@ -1,0 +1,89 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cd:
+    name: CD
+    if: github.repository == 'famura/neuralfields'
+    runs-on: ubuntu-latest
+    permissions: # https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+      contents: write # to publish the docs to gh-pages
+    env:
+      os: ubuntu-latest
+      python: "3.10"
+
+    steps:
+      - name: Install prerequisites
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gcc git
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 - --force
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "Fabio Muratore"
+          git config user.email "robot-learning@famura.net"
+#          git config user.name "${GITHUB_ACTOR}"
+#          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Bump patch version
+        run: poetry run poe bump-version-tag patch
+
+      - name: Deploy docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          poetry run poe test
+          poetry run poe docs
+          poetry run poe deploy-docs --push --alias latest
+
+      - name: Deploy package
+        run: |
+          poetry run poe deploy-package --username ${{ secrets.PYPI_USER }} --password ${{ secrets.PYPI_TOKEN }}
+
+      - name: Push version tag
+        run: poetry run poe push-latest-version-tag
+
+  release_draft:
+    name: Update release notes
+    runs-on: ubuntu-latest
+    permissions: # https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+      contents: write
+
+    steps:
+      - uses: release-drafter/release-drafter@v5.22.0
+        with:
+          config-name: release_drafter.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

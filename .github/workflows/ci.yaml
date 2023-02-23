@@ -1,0 +1,100 @@
+name: Continuous Integration
+
+on: [pull_request, push, workflow_dispatch]
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        #os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [ "3.8", "3.11" ]
+    runs-on: ${{ matrix.os }}
+    env:
+      os: ${{ matrix.os }}
+      python: ${{ matrix.python-version }}
+
+    steps:
+      - name: Install prerequisites
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gcc git
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 - --force
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install and run pre-commit hooks
+        env:
+          SKIP: no-commit-to-branch
+        run: |
+          poetry run pre-commit install
+          poetry run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run tests
+        run: poetry run poe test
+
+      - name: Code Coverage Summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
+          format: markdown
+          output: both
+
+      - name: Build docs
+        run: poetry run poe docs
+
+      - name: Deploy temporary docs
+        if: github.event_name == 'pull_request'
+        run: |
+          poetry run poe deploy-docs \
+            --push \
+            --alias pr-${{ github.event.number }} \
+            --version-postfix pr-${{ github.event.number }}
+
+      - name: Write PR note
+        if: github.event_name == 'pull_request'
+        run: |
+          cat <<EOT>> pr_ci_note.md
+
+          [temporary docs](https://github.com/famura/neuralfields/pr-${{ github.event.number }}").
+          [tests](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/tests/report.html)
+          [coverage](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/coverage/report.html)
+
+          EOT
+
+      - name: Add PR note
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2.3.1
+        with:
+          path: pr_ci_note.md

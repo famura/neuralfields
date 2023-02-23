@@ -1,0 +1,53 @@
+name: Delete Temporary Documentation
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  deplete-temp-docs:
+    name: Delete temporary documentation
+    runs-on: ubuntu-latest
+    env:
+      os: ubuntu-latest
+      python: "3.10"
+
+    steps:
+      - name: Install prerequisites
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gcc git
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 - --force
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Determine version
+        id: temp_doc_version
+        run: |
+          VERSION_JSON=$(poetry run mike list --rebase --json pr-${{github.event.number}})
+          echo "::set-output name=json::$VERSION_JSON"
+
+      - name: Delete temporary documentation
+        run: poetry run mike delete --rebase --push ${{ fromJson(steps.temp_doc_version.outputs.json).version }}

@@ -1,0 +1,8 @@
+template: |
+  ## Changes since the last release
+
+  $CHANGES
+
+  ## Contributors of this release
+
+  $CONTRIBUTORS

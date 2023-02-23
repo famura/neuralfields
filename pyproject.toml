@@ -1,0 +1,333 @@
+[tool.poetry]
+name = "neuralfields"
+version = "0.0.0" # DO NOT MODIFY SINCE THE VERSIONS ARE AUTOMATICALLY GENERATED FROM GIT TAGS VIA DUNAMI
+description = "A type of potential-based recurrent neural networks implemented with PyTorch"
+license = "MIT"
+authors = ["Fabio Muratore <robot-learning@famura.net>"]
+maintainers = ["Fabio Muratore <robot-learning@famura.net>"]
+homepage = "https://github.com/famura/neuralfields"
+documentation = "https://famura.github.io/neuralfields"
+repository = "https://github.com/famura/neuralfields"
+include = ["README.md", "pyproject.toml"]
+readme = "README.md"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+]
+
+[build-system]
+requires = ["poetry-core>=1.3.2"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+dunamai = "^1.15.0"
+python = "^3.8"
+torch = "^1.13.1"
+
+[tool.poetry.group.dev.dependencies]
+autoflake = "^2.0.0"
+bandit = {extras = ["toml"], version = "^1.7.4"}
+black = "^22.12.0"
+genbadge = {extras = ["coverage", "tests"], version = "^1.1.0"}
+git-changelog = "^0.6.0"
+importlib-metadata = "^6.0.0"
+isort = {extras = ["colors"], version = "^5.11.4"}
+lxml = "^4.9.2"
+matplotlib = "^3.7.0"
+mike = "^1.1.2"
+mkdocs = "^1.4.2"
+mkdocs-gen-files = "^0.4.0"
+mkdocs-git-revision-date-localized-plugin = "^1.1.0"
+mkdocs-literate-nav = "^0.5.0"
+mkdocs-material = "^9.0.0"
+mkdocs-minify-plugin = "^0.6.2"
+mkdocstrings-python = "^0.8.2"
+mypy = "^0.991"
+pip-licenses = "^4.0.3"
+poethepoet = "^0.17.1"
+pre-commit = "^2.21.0"
+pylint = "^2.15.9"
+pytest = "^7.2.1"
+pytest-cov = "^4.0.0"
+pytest-html = "^3.2.0"
+pytest-lazy-fixture = "^0.6.3"
+pyupgrade = "^3.3.1"
+types-toml = "^0.10.8.1"
+
+# ------------ #
+# Tools Config #
+# ------------ #
+
+[tool.poetry.group.dunamai.dependencies]
+pytest = "^7.2.1"
+
+[tool.autoflake]
+remove-all-unused-imports = true
+remove-unused-variables = true
+
+[tool.bandit]
+exclude_dirs = [
+  '.linting_reports',
+  '.pytest_cache',
+  '.venv',
+]
+
+[tool.black]
+include = '\.pyi?$|\.ipynb'
+include_trailing_comma = true
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.github
+  | \.linting_reports
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.site
+  | \.venv
+  | build
+  | data
+  | dist
+)/
+'''
+line-length = 120
+
+[tool.coverage.report]
+fail_under = 67
+show_missing = true
+skip_empty = true
+
+[tool.coverage.run]
+branch = true
+source = ["neuralfields"]
+
+[tool.isort]
+atomic = true
+forced_separate = "neuralfields"
+line_length = 120
+lines_after_imports = 2
+multi_line_output = 3
+profile = "black"
+use_parentheses = true
+
+[tool.mypy]
+exclude = [
+  '.eggs',
+  '.git/',
+  '.github/',
+  '.linting_reports/',
+  '.mypy_cache/',
+  '.pytest_cache/',
+  '.site/',
+  '.venv/',
+  'build/',
+  'data/',
+  'dist/',
+]
+ignore_missing_imports = true # when no stubs are available, e.g. for matplotlib
+pretty = false # uses too much vspace and degrades the legibitity of the report
+show_column_numbers = true
+show_error_codes = true
+show_error_context = false
+show_traceback = true
+
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.typecheck]
+generated-members=["numpy.*","torch.*"] # list of members which are set dynamically to avoid E1101 error
+
+[tool.pylint.logging]
+logging-format-style = "new"
+
+[tool.pylint.master]
+fail-under = 8
+
+[tool.pylint.messages_control]
+disable = [
+  'C0103', # snake case variable names
+  'C0114', # missing module docstring
+  'R0903', # too few public methods
+  'R0911', # too-many-return-statements
+  'W0105', # pointless stings
+]
+
+[tool.pylint.reports]
+msg-template = "{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
+reports = 'no' # only print the message, not the complete report
+
+[tool.pytest.ini_options]
+addopts = [
+  "--capture=tee-sys",
+  "--full-trace",
+  "--html=docs/exported/tests/report.html",
+  "--junit-xml=pytest.xml",
+  "--self-contained-html",
+  "--showlocals",
+  "--strict-markers",
+  "-ra",
+]
+markers = [
+    "slow: marks tests as time-intensive (deselect with '-m \"not slow\"')",
+    "visual: marks tests that produce plots or animations (deselect with '-m \"not visual\"')",
+]
+pythonpath = [".", "neuralfields"]
+testpaths = ["tests"]
+
+# ---------- #
+# Poe Config #
+# ---------- #
+
+[tool.poe]
+shell_interpreter = "bash"
+verbosity = 1
+
+[tool.poe.tasks.bump-version-tag]
+shell = """
+  set -e
+  git fetch --all --tags
+  VERSION_OLD=$(dunamai from git --format "{base}")
+  if [[ $(git status --porcelain pyproject.toml) ]]; then
+    echo "You have uncommitted changes in pyproject.toml. Stopping.";
+    exit 1;
+  fi
+  poetry version --quiet $VERSION_OLD
+  poetry version ${part}
+  VERSION_NEW=$(poetry version --short)
+  git checkout pyproject.toml
+  TAG_NEW=v$VERSION_NEW
+  git tag $TAG_NEW ${release:+ --annotate --message="Bump from $VERSION_OLD to $VERSION_NEW"}
+  """
+help = """Bump version. This creates a new git tag based on the desired version part. Note that this task does not
+actually push the tag. You can do this manually, e.g. by running 'poe push-latest-version-tag'."""
+args = [
+  { name = "part", positional = true, required = true, help = "Part of version being bumped. Allowed values: patch, minor, major." },
+  { name = "release", type = "boolean", help = "Wether this is a release. Then, the tag will be annotated." },
+]
+
+[tool.poe.tasks.clean]
+cmd = """
+  rm -rf \
+    **/__pycache__ \
+    .coverage \
+    .linting_reports \
+    .mypy_cache \
+    .pytest_cache \
+    .site \
+    coverage.xml \
+    dist \
+    docs/exported \
+    docs/index.md \
+    pytest.xml
+  """
+help = "Clean up all temporary files."
+
+[tool.poe.tasks.format]
+sequence = [
+  { shell = "shopt -s globstar; black ${check:+ --check --diff} ${files}" },
+  { shell = "shopt -s globstar; isort --color ${check:+ --check --diff} ${files}" },
+  { shell = "shopt -s globstar; pyupgrade --py38-plus ${files}" },
+  { shell = "shopt -s globstar; autoflake --in-place ${check:+ --check-diff} ${files}" },
+]
+help = "Format or check Python files with black, isort, pyupgrade & autoflake."
+args = [
+  { name = "check", type = "boolean", help = "If true, only check if the files are formatted but do not format them." },
+  { name = "files", positional = true, multiple = true, default = "**/*.py", help = "List of files (optional)." },
+]
+
+[tool.poe.tasks.lint]
+sequence = [
+  { shell = "mkdir -p ${reportdir}" },
+  { shell = "mypy ${files} --config-file=pyproject.toml --txt-report=${reportdir} > ${reportdir}/mypy_report.txt || true" },
+  { cmd = "pylint ${files} --rcfile=pyproject.toml --exit-zero --output=${reportdir}/pylint_report.txt" },
+  { cmd = "bandit --configfile=pyproject.toml --severity-level=medium --recursive --exit-zero --format=txt --output=${reportdir}/bandid_report.txt ${files}" },
+]
+help = "Lint Python files with mypy, pylint, and bandit. The reports are stored in the given directory."
+args = [
+  { name = "files", positional = true, multiple = true, default = "neuralfields", help = "List of files or directories (optional)." },
+  { name = "reportdir", default = ".linting_reports", help = "Diretory to write the linters' reports to (optional)." },
+]
+
+[tool.poe.tasks.test]
+sequence = [
+  { cmd = "coverage run -m pytest --exitfirst" },
+  { cmd = "coverage xml" },
+  { cmd = "coverage html --directory docs/exported/coverage" },
+  { shell = "mv docs/exported/coverage/index.html docs/exported/coverage/report.html" },
+  { cmd = "coverage report" },
+]
+help = "Run the project's tests using pytest (with --exitfirst). Then compute the test coverage and compile it to html."
+
+[tool.poe.tasks._export-docs-artifacts]
+sequence = [
+  { cmd = "git-changelog . --output docs/exported/changelog.md --style conventional --template angular" },
+  { cmd = "genbadge coverage --input-file coverage.xml --output-file docs/exported/coverage/badge.svg" },
+  { cmd = "genbadge tests --input-file pytest.xml --output-file docs/exported/tests/badge.svg" },
+  { cmd = "pip-licenses --format markdown --with-authors --with-urls --with-description --output-file docs/exported/third_party_licenses.md" },
+  { shell = "poe --help > docs/exported/poe_options.txt" },
+]
+help = "Get the git change log to. Next, create the badges. Finally, fetch all thrid party licenses and add them to the documentation."
+
+[tool.poe.tasks.docs]
+sequence = [
+  { ref = "_export-docs-artifacts" },
+  { cmd = "mkdocs build" },
+]
+help = "Build the docs (needs completed test task)."
+
+[tool.poe.tasks.deploy-docs]
+shell = """
+  VERSION=$(dunamai from git --format "{base}")
+  MAJOR=$(echo $VERSION | cut -d. -f1)
+  MINOR=$(echo $VERSION | cut -d. -f2)
+  mike deploy ${push:+ --force --push} --no-redirect --update-aliases $MAJOR.$MINOR${version_postfix} ${alias}
+  """
+help = "Deploy the docs (needs completed docs task)."
+args = [
+  { name = "alias", required = true, help = "Version alias." },
+  { name = "push", type = "boolean", help = "Wether to push the docs to GitHub pages." },
+  { name = "version-postfix", default = "", help = "Information appended to version (optional)." },
+]
+
+[tool.poe.tasks.deploy-package]
+shell = """
+  VERSION=$(dunamai from git --format "{base}")
+  if [[ $(git status --porcelain pyproject.toml) ]]; then
+    echo "You have uncommitted changes in pyproject.toml. Stopping.";
+    exit 1;
+  fi
+  poetry version --quiet $VERSION
+  poetry publish --build --username ${username} --password ${password}
+  git checkout pyproject.toml
+  """
+help = "Deploy package to PyPI (no --repository PRIVATE_REPO is needed)."
+args = [
+  { name = "username", required = true, help = "Repository user name." },
+  { name = "password", required = true, help = "Repository password / access token." },
+]
+
+[tool.poe.tasks.push-latest-version-tag]
+shell = "git push origin v$(dunamai from git --format \"{base}\")"
+help = "Push the latest version tag."
+
+[tool.poe.tasks.release]
+sequence = [
+  { ref = "test" },
+  { ref = "bump-version-tag --release ${part}" },
+  { ref = "docs" },
+  { ref = "deploy-docs --push --alias stable" },
+  { cmd = "mike set-default --push stable" },
+  { ref = "deploy-package --username ${username} --password ${password}" },
+  { ref = "push-latest-version-tag" },
+]
+help = """Make a new (stable) release. This will test the package, create a new tag based on the version, build and
+deploy the docs, and finally push the new tag to remote."""
+args = [
+  { name = "part", positional = true, default = "minor", help = "Release type. Allowed values: patch, minor, major." },
+  { name = "password", required = true, help = "The repository password / access token." },
+  { name = "username", required = true, help = "The repository user name." },
+]

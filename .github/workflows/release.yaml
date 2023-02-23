@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bumped-version-part:
+        description: "The version part to bump."
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+        default: "minor"
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release
+    if: github.repository == 'famura/neuralfields'
+    runs-on: ubuntu-latest
+    permissions: # https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+      contents: write # to publish the docs to gh-pages
+    env:
+      os: ubuntu-latest
+      python: "3.10"
+
+    steps:
+      - name: Install prerequisites
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gcc git
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 - --force
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Publish to PyPI
+        run: |
+          poetry run poe release ${{ github.event.inputs.bumped-version-part }} \
+            --username ${{ secrets.PYPI_USER }} \
+            --password ${{ secrets.PYPI_TOKEN }}
