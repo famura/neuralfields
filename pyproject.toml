@@ -196,7 +196,7 @@ shell = """
     echo "You have uncommitted changes in pyproject.toml. Stopping.";
     exit 1;
   fi
-  poetry version --quiet $VERSION_OLD
+  poetry version $VERSION_OLD
   poetry version ${part}
   VERSION_NEW=$(poetry version --short)
   git checkout pyproject.toml
@@ -301,7 +301,7 @@ shell = """
     echo "You have uncommitted changes in pyproject.toml. Stopping.";
     exit 1;
   fi
-  poetry version --quiet $VERSION
+  poetry version $VERSION
   poetry publish --build --username ${username} --password ${password}
   git checkout pyproject.toml
   """
