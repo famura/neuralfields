@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import pytest
 import torch
-import torch.nn as nn
+from torch import nn
 
 from tests.conftest import m_needs_cuda
 
@@ -154,10 +154,19 @@ def test_simple_neural_fields_fail():
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
 
     with pytest.raises(ValueError):
-        pd_linear(p=torch.randn(3), s=torch.randn(3), h=torch.randn(3), tau=torch.tensor(-1.0))
+        pd_linear(
+            p=torch.randn(3), s=torch.randn(3), h=torch.randn(3), tau=torch.tensor(-1.0), kappa=None, capacity=None
+        )
 
     with pytest.raises(ValueError):
-        pd_cubic(p=torch.randn(3), s=torch.randn(3), h=torch.randn(3), tau=torch.tensor(1.0), kappa=torch.tensor(-1.0))
+        pd_cubic(
+            p=torch.randn(3),
+            s=torch.randn(3),
+            h=torch.randn(3),
+            tau=torch.tensor(1.0),
+            kappa=torch.tensor(-1.0),
+            capacity=None,
+        )
 
 
 @pytest.mark.parametrize(

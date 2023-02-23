@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import pytest
 import torch
-import torch.nn as nn
+from torch import nn
 
 from tests.conftest import m_needs_cuda
 

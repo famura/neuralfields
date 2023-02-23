@@ -1,8 +1,8 @@
 import multiprocessing as mp
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from neuralfields.custom_layers import IndependentNonlinearitiesLayer, MirroredConv1d, init_param_
 from neuralfields.custom_types import ActivationFunction
@@ -151,9 +151,10 @@ class NeuralField(PotentialBased):
         rhs = stimuli + self.resting_level - potentials + self.kappa * torch.pow(self.resting_level - potentials, 3)
         return rhs / self.tau
 
+    # pylint: disable=duplicate-code
     def forward_one_step(
         self, inputs: torch.Tensor, hidden: Optional[torch.Tensor] = None
-    ) -> (torch.Tensor, torch.Tensor):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Get the batch size, and prepare the inputs accordingly.
         batch_size = PotentialBased._infer_batch_size(inputs)
         inputs = inputs.view(batch_size, self.input_size).to(device=self.device)
@@ -167,10 +168,6 @@ class NeuralField(PotentialBased):
 
         # Compute the activations: scale the potentials, subtract a bias, and pass them through a nonlinearity.
         activations_prev = self.potentials_to_activations(potentials)
-
-        # ----------------
-        # Activation Logic
-        # ----------------
 
         # Combine the current inputs to the external simuli.
         self._stimuli_external = self.input_embedding(inputs)

@@ -70,4 +70,4 @@ def test_mirrored_conv1d_layer(
         assert output.shape == (batch_size, out_channels, in_length)
 
     # Convert to Torch Script.
-    scripted_conv_layer = torch.jit.script(conv_layer)
+    torch.jit.script(conv_layer)

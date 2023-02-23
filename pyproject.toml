@@ -50,6 +50,7 @@ pip-licenses = "^4.0.3"
 poethepoet = "^0.17.1"
 pre-commit = "^2.21.0"
 pylint = "^2.15.9"
+pyqt5 = "^5.15.9"
 pytest = "^7.2.1"
 pytest-cov = "^4.0.0"
 pytest-html = "^3.2.0"
@@ -60,9 +61,6 @@ types-toml = "^0.10.8.1"
 # ------------ #
 # Tools Config #
 # ------------ #
-
-[tool.poetry.group.dunamai.dependencies]
-pytest = "^7.2.1"
 
 [tool.autoflake]
 remove-all-unused-imports = true
@@ -136,10 +134,12 @@ show_traceback = true
 
 
 [tool.pylint.format]
+max-args = 15
+max-attributes = 10
 max-line-length = 120
 
 [tool.pylint.typecheck]
-generated-members=["numpy.*","torch.*"] # list of members which are set dynamically to avoid E1101 error
+generated-members = ["numpy.*","torch.*"] # list of members which are set dynamically to avoid E1101 error
 
 [tool.pylint.logging]
 logging-format-style = "new"
@@ -152,7 +152,8 @@ disable = [
   'C0103', # snake case variable names
   'C0114', # missing module docstring
   'R0903', # too few public methods
-  'R0911', # too-many-return-statements
+  'R0911', # too many return statements
+  'R1735', # use dict literal {} instead of dict()
   'W0105', # pointless stings
 ]
 

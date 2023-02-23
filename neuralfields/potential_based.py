@@ -1,16 +1,19 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
-import torch.nn as nn
-import torch.nn.utils.convert_parameters as cp
 import torch.utils.data
+from torch import nn
+from torch.nn.utils import convert_parameters
 
 from neuralfields.custom_types import ActivationFunction
 
 
 class PotentialBased(nn.Module, ABC):
     """Base class for all potential-based recurrent neutral networks."""
+
+    _log_tau: Union[torch.Tensor, nn.Parameter]
+    _log_kappa: Union[torch.Tensor, nn.Parameter]
 
     _potentials_max: Union[float, int] = 100
     """Threshold to clip the potentials symmetrically (at a very large value) for numerical stability."""
@@ -105,12 +108,12 @@ class PotentialBased(nn.Module, ABC):
         """Get the module's parameters as a 1-dimensional array.
         The values are copied, thus modifying the return value does not propagate back to the module parameters.
         """
-        return cp.parameters_to_vector(self.parameters())
+        return convert_parameters.parameters_to_vector(self.parameters())
 
     @param_values.setter
     def param_values(self, param: torch.Tensor):
         """Set the module's parameters from a 1-dimensional array."""
-        cp.vector_to_parameters(param, self.parameters())
+        convert_parameters.vector_to_parameters(param, self.parameters())
 
     @property
     def device(self) -> torch.device:
@@ -143,12 +146,12 @@ class PotentialBased(nn.Module, ABC):
         return self._stimuli_internal
 
     @property
-    def tau(self) -> torch.Tensor:
+    def tau(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the timescale parameter, called $\tau$ in the original paper [Amari_77]."""
         return torch.exp(self._log_tau)
 
     @property
-    def kappa(self) -> torch.Tensor:
+    def kappa(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the cubic decay parameter $\kappa$."""
         return torch.exp(self._log_kappa)
 
@@ -179,10 +182,9 @@ class PotentialBased(nn.Module, ABC):
         if potentials_init is None:
             if batch_size is None:
                 return self._potentials_init.view(-1)
-            else:
-                return self._potentials_init.repeat(batch_size, 1)
-        else:
-            return potentials_init.to(device=self.device)
+            return self._potentials_init.repeat(batch_size, 1)
+
+        return potentials_init.to(device=self.device)
 
     @staticmethod
     def _infer_batch_size(inputs: torch.Tensor) -> int:
@@ -202,7 +204,7 @@ class PotentialBased(nn.Module, ABC):
     @abstractmethod
     def forward_one_step(
         self, inputs: torch.Tensor, hidden: Optional[torch.Tensor] = None
-    ) -> (torch.Tensor, torch.Tensor):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute the external and internal stimuli, advance the potential dynamics for one time step, and return
         the model's output.
 
@@ -217,7 +219,7 @@ class PotentialBased(nn.Module, ABC):
             `(batch_size, input_size)`.
         """
 
-    def forward(self, inputs: torch.Tensor, hidden: Optional[torch.Tensor] = None) -> (torch.Tensor, torch.Tensor):
+    def forward(self, inputs: torch.Tensor, hidden: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute the external and internal stimuli, advance the potential dynamics for one time step, and return
         the model's output for several time steps in a row.
 
@@ -243,8 +245,8 @@ class PotentialBased(nn.Module, ABC):
         inputs = inputs.permute(1, 0, 2)  # move time to first dimension for easy iterating
         outputs_all = []
         hidden_all = []
-        for input in inputs:
-            outputs, hidden_next = self.forward_one_step(input, hidden)
+        for inp in inputs:
+            outputs, hidden_next = self.forward_one_step(inp, hidden)
             hidden = hidden_next.clone()
             outputs_all.append(outputs)
             hidden_all.append(hidden_next)

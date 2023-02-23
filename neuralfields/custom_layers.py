@@ -3,7 +3,7 @@ import math
 from typing import Any, Optional, Sequence, Union
 
 import torch
-from torch import nn as nn
+from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.modules.utils import _single
@@ -28,21 +28,22 @@ def _is_iterable(obj: Any) -> bool:
 
 
 @torch.no_grad()
-def apply_weights_conf_(m: nn.Module, ls: int, ks: int) -> None:
-    """Helper function to set the weights of a convolution layer.
+def apply_bell_shaped_weights_conv_(m: nn.Module, w: torch.Tensor, ks: int) -> None:
+    """Helper function to set the weights of a convolution layer according to a squared exponential.
 
     Args:
         m: Module containing the weights to be set.
-        ls: Kernel length scale.
-        ks: Size of the kernel.
+        w: Linearly spaced weights.
+        ks: Size of the convolution kernel.
     """
-    dim_ch_out, dim_ch_in = m.weight.data.shape[0], m.weight.data.shape[1]
+    dim_ch_out, dim_ch_in = m.weight.data.size(0), m.weight.data.size(1)  # type: ignore[operator]
     amp = torch.rand(dim_ch_out * dim_ch_in)
     for i in range(dim_ch_out):
         for j in range(dim_ch_in):
-            m.weight.data[i, j, :] = amp[i * dim_ch_in + j] * 2 * (torch.exp(-torch.pow(ls, 2) / (ks / 2) ** 2) - 0.5)
+            m.weight.data[i, j, :] = amp[i * dim_ch_in + j] * 2 * (torch.exp(-torch.pow(w, 2) / (ks / 2) ** 2) - 0.5)
 
 
+# pylint: disable=too-many-branches
 @torch.no_grad()
 def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
     """Initialize the parameters of the PyTorch Module / layer / network / cell according to its type.
@@ -58,15 +59,15 @@ def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
         if kwargs.get("bell", False):
             # Initialize the kernel weights with a shifted of shape exp(-x^2 / sigma^2).
             # The biases are left unchanged.
-            if m.weight.data.shape[2] % 2 == 0:
-                ks_half = m.weight.data.shape[2] // 2
+            if m.weight.data.size(2) % 2 == 0:
+                ks_half = m.weight.data.size(2) // 2
                 ls_half = torch.linspace(ks_half, 0, ks_half)  # descending
-                ls = torch.cat([ls_half, reversed(ls_half)])
+                ls = torch.cat([ls_half, torch.flip(ls_half, (0,))])
             else:
-                ks_half = math.ceil(m.weight.data.shape[2] / 2)
+                ks_half = math.ceil(m.weight.data.size(2) / 2)
                 ls_half = torch.linspace(ks_half, 0, ks_half)  # descending
-                ls = torch.cat([ls_half, reversed(ls_half[:-1])])
-            apply_weights_conf_(m, ls, ks_half)
+                ls = torch.cat([ls_half, torch.flip(ls_half[:-1], (0,))])
+            apply_bell_shaped_weights_conv_(m, ls, ks_half)
         else:
             m.reset_parameters()
 
@@ -74,9 +75,9 @@ def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
         if kwargs.get("bell", False):
             # Initialize the kernel weights with a shifted of shape exp(-x^2 / sigma^2).
             # The biases are left unchanged (does not exist by default).
-            ks = m.weight.data.shape[2]  # ks_mirr = ceil(ks_conv1d / 2)
+            ks = m.weight.data.size(2)  # ks_mirr = ceil(ks_conv1d / 2)
             ls = torch.linspace(ks, 0, ks)  # descending
-            apply_weights_conf_(m, ls, ks)
+            apply_bell_shaped_weights_conv_(m, ls, ks)
         else:
             m.reset_parameters()
 
@@ -89,7 +90,7 @@ def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
     elif isinstance(m, nn.Linear):
         if kwargs.get("self_centric_init", False):
             m.weight.data.fill_(-0.5)  # inhibit others
-            for i in range(m.weight.data.shape[0]):
+            for i in range(m.weight.data.size(0)):
                 m.weight.data[i, i] = 1.0  # excite self
 
 
@@ -98,6 +99,9 @@ class IndependentNonlinearitiesLayer(nn.Module):
     nonlinearity. If a list of nonlinearities is provided, every dimension will be processed separately.
     The scaling and the bias are learnable parameters.
     """
+
+    weight: Optional[nn.Parameter]
+    bias: Optional[nn.Parameter]
 
     def __init__(
         self,
@@ -138,19 +142,28 @@ class IndependentNonlinearitiesLayer(nn.Module):
         return f"in_features={self.weight.numel()}, weight={self.weight is not None}, " f"bias={self.bias is not None}"
 
     def forward(self, inp: torch.Tensor) -> torch.Tensor:
+        """Apply a bias, scaling, and a nonliterary to each input separately.
+
+        $y = f_{nlin}( w * (x + b) )$
+
+        Args:
+            inp: Arbitrary input tensor.
+
+        Returns:
+            Output tensor.
+        """
         # Add bias if desired.
         tmp = inp + self.bias if self.bias is not None else inp
 
         # Apply weights if desired.
         tmp = self.weight * tmp if self.weight is not None else tmp
 
-        # y = f_nlin( w * (x + b) )
+        # Every dimension runs through an individual nonlinearity.
         if _is_iterable(self.nonlin):
-            # Every dimension separately.
-            return torch.tensor([n(tmp[i]) for i, n in enumerate(self.nonlin)])
-        else:
-            # All dimensions identically.
-            return self.nonlin(tmp)
+            return torch.tensor([fcn(tmp[idx]) for idx, fcn in enumerate(self.nonlin)])
+
+        # All dimensions identically.
+        return self.nonlin(tmp)  # type: ignore[operator]
 
 
 class MirroredConv1d(_ConvNd):
@@ -174,17 +187,13 @@ class MirroredConv1d(_ConvNd):
         dtype=None,
     ):
         # Same as in PyTorch 1.12.
-        kernel_size = _single(kernel_size)
-        stride = _single(stride)
-        padding = _single(padding) if not isinstance(padding, str) else padding
-        dilation = _single(dilation)
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
+            kernel_size=_single(kernel_size),  # type: ignore[arg-type]
+            stride=_single(stride),  # type: ignore[arg-type]
+            padding=_single(padding) if not isinstance(padding, str) else padding,  # type: ignore[arg-type]
+            dilation=_single(dilation),  # type: ignore[arg-type]
             transposed=False,
             output_padding=_single(0),
             groups=groups,
@@ -198,7 +207,7 @@ class MirroredConv1d(_ConvNd):
         self.orig_weight_shape = self.weight.shape
 
         # Get number of kernel elements we later want to use for mirroring.
-        self.half_kernel_size = math.ceil(self.weight.shape[2] / 2)  # kernel_size = 4 --> 2, kernel_size = 5 --> 3
+        self.half_kernel_size = math.ceil(self.weight.size(2) / 2)  # kernel_size = 4 --> 2, kernel_size = 5 --> 3
 
         # Initialize the weights values the same way PyTorch does.
         new_weight_init = torch.zeros(self.orig_weight_shape[0], self.orig_weight_shape[1], self.half_kernel_size)
@@ -208,6 +217,16 @@ class MirroredConv1d(_ConvNd):
         self.weight = nn.Parameter(new_weight_init, requires_grad=True)
 
     def forward(self, inp: torch.Tensor) -> torch.Tensor:
+        """Computes the 1-dim convolution just like [Conv1d][torch.nn.Conv1d], however, the kernel has mirrored weights,
+        i.e., it is symmetric around its middle element, or in case of an even kernel size around an imaginary middle
+        element.
+
+        Args:
+            inp: 3-dim input tensor just like for [Conv1d][torch.nn.Conv1d].
+
+        Returns:
+            3-dim output tensor just like for [Conv1d][torch.nn.Conv1d].
+        """
         # Reconstruct symmetric weights for convolution (original size).
         mirr_weight = torch.empty(self.orig_weight_shape, dtype=inp.dtype)
 

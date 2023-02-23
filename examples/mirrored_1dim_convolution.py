@@ -6,18 +6,18 @@ See Also:
     # https://github.com/jayleicn/TVQAplus/blob/master/model/cnn.py
 """
 import torch
-import torch.nn as nn
 from matplotlib import pyplot as plt
+from torch import nn
 
 from neuralfields import MirroredConv1d, init_param_
 
 
 if __name__ == "__main__":
     # Configure this script.
-    hand_coded_filter = True  # if True, use a ramp from 0 to 1 instead of random weights
+    hand_coded_filter = False  # if True, use a ramp from 0 to 1 instead of random weights
     use_depth_wise_conv = False  # just fooling around with that, just False in most cases
     use_custom_mirr_layer = True
-    use_custom_bell_init = False
+    use_custom_bell_init = True
     torch.manual_seed(0)
 
     # More configuration.

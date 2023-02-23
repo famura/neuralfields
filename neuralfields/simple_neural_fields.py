@@ -1,7 +1,7 @@
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from neuralfields.custom_layers import IndependentNonlinearitiesLayer, _is_iterable, init_param_
 from neuralfields.custom_types import ActivationFunction, PotentialsDynamicsType
@@ -21,7 +21,7 @@ def _verify_tau(tau: torch.Tensor) -> None:
         raise ValueError(f"The time constant tau must be > 0, but is {tau}!")
 
 
-def _verify_kappa(kappa: torch.Tensor) -> None:
+def _verify_kappa(kappa: Optional[torch.Tensor]) -> None:
     r"""Make sure that the cubic decay factor is greater or equal zero.
 
     Args:
@@ -30,12 +30,30 @@ def _verify_kappa(kappa: torch.Tensor) -> None:
     Raises:
         `ValueError`: If $\kappa < 0$.
     """
-    if not all(kappa.view(1) >= 0):
+    if kappa is not None and not all(kappa.view(1) >= 0):
         raise ValueError(f"All elements of the cubic decay kappa must be > 0, but they are {kappa}")
 
 
+def _verify_capacity(capacity: Optional[torch.Tensor]) -> None:
+    r"""Make sure that the cubic decay factor is greater or equal zero.
+
+    Args:
+        capacity: Capacity value to check.
+
+    Raises:
+        `AssertionError`: If `capacity` is not a [Tensor][torch.Tensor].
+    """
+    assert isinstance(capacity, torch.Tensor)
+
+
+# pylint: disable=unused-argument
 def pd_linear(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Basic proportional dynamics.
 
@@ -46,7 +64,8 @@ def pd_linear(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential, ignored for this dynamics function.
+        capacity: Capacity value of a neuron's potential, ignored for this dynamics function.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
@@ -55,8 +74,14 @@ def pd_linear(
     return (s + h - p) / tau
 
 
+# pylint: disable=unused-argument
 def pd_cubic(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Basic proportional dynamics with additional cubic decay.
 
@@ -67,18 +92,25 @@ def pd_cubic(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential.
+        capacity: Capacity value of a neuron's potential, ignored for this dynamics function.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
     """
     _verify_tau(tau)
-    _verify_kappa(kwargs["kappa"])
-    return (s + h - p + kwargs["kappa"] * torch.pow(h - p, 3)) / tau
+    _verify_kappa(kappa)
+    return (s + h - p + kappa * torch.pow(h - p, 3)) / tau
 
 
+# pylint: disable=unused-argument
 def pd_capacity_21(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Capacity-based dynamics with 2 stable ($p=-C$, $p=C$) and 1 unstable fix points ($p=0$) for $s=0$
 
@@ -92,17 +124,25 @@ def pd_capacity_21(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential, ignored for this dynamics function.
+        capacity: Capacity value of a neuron's potential.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
     """
     _verify_tau(tau)
-    return (s - (h - p) * (torch.ones_like(p) - (h - p) ** 2 / kwargs["capacity"] ** 2)) / tau
+    _verify_capacity(capacity)
+    return (s - (h - p) * (torch.ones_like(p) - (h - p) ** 2 / capacity**2)) / tau
 
 
+# pylint: disable=unused-argument
 def pd_capacity_21_abs(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Capacity-based dynamics with 2 stable ($p=-C$, $p=C$) and 1 unstable fix points ($p=0$) for $s=0$
 
@@ -118,17 +158,25 @@ def pd_capacity_21_abs(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential, ignored for this dynamics function.
+        capacity: Capacity value of a neuron's potential.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
     """
     _verify_tau(tau)
-    return (s - (h - p) * (torch.ones_like(p) - torch.abs(h - p) / kwargs["capacity"])) / tau
+    _verify_capacity(capacity)
+    return (s - (h - p) * (torch.ones_like(p) - torch.abs(h - p) / capacity)) / tau
 
 
+# pylint: disable=unused-argument
 def pd_capacity_32(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Capacity-based dynamics with 3 stable ($p=-C$, $p=0$, $p=C$) and 2 unstable fix points ($p=-C/2$, $p=C/2$)
     for $s=0$
@@ -143,22 +191,30 @@ def pd_capacity_32(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential, ignored for this dynamics function.
+        capacity: Capacity value of a neuron's potential.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
     """
     _verify_tau(tau)
+    _verify_capacity(capacity)
     return (
         s
         + (h - p)
-        * (torch.ones_like(p) - (h - p) ** 2 / kwargs["capacity"] ** 2)
-        * (torch.ones_like(p) - ((2 * (h - p)) ** 2 / kwargs["capacity"] ** 2))
+        * (torch.ones_like(p) - (h - p) ** 2 / capacity**2)
+        * (torch.ones_like(p) - ((2 * (h - p)) ** 2 / capacity**2))
     ) / tau
 
 
+# pylint: disable=unused-argument
 def pd_capacity_32_abs(
-    p: torch.Tensor, s: torch.Tensor, h: torch.Tensor, tau: torch.Tensor, **kwargs: torch.Tensor
+    p: torch.Tensor,
+    s: torch.Tensor,
+    h: torch.Tensor,
+    tau: torch.Tensor,
+    kappa: Optional[torch.Tensor],
+    capacity: Optional[torch.Tensor],
 ) -> torch.Tensor:
     r"""Capacity-based dynamics with 3 stable ($p=-C$, $p=0$, $p=C$) and 2 unstable fix points ($p=-C/2$, $p=C/2$)
     for $s=0$.
@@ -176,17 +232,19 @@ def pd_capacity_32_abs(
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
         h: Resting level, a.k.a. constant offset.
         tau: Time scaling factor, higher values lead to slower changes of the potentials (linear dependency).
-        kwargs: Additional parameters to the potential dynamics.
+        kappa: Cubic decay factor for a neuron's potential, ignored for this dynamics function.
+        capacity: Capacity value of a neuron's potential.
 
     Returns:
         Time derivative of the potentials $\frac{dp}{dt}$.
     """
     _verify_tau(tau)
+    _verify_capacity(capacity)
     return (
         s
         + (h - p)
-        * (torch.ones_like(p) - torch.abs(h - p) / kwargs["capacity"])
-        * (torch.ones_like(p) - 2 * torch.abs(h - p) / kwargs["capacity"])
+        * (torch.ones_like(p) - torch.abs(h - p) / capacity)
+        * (torch.ones_like(p) - 2 * torch.abs(h - p) / capacity)
     ) / tau
 
 
@@ -198,6 +256,8 @@ class SimpleNeuralField(PotentialBased):
         Predictive Decisions based on Hierarchical Dynamical Systems", International Conference on Intelligent
         Robots and Systems, 2012.
     """
+
+    _log_capacity: Optional[Union[torch.Tensor, nn.Parameter]]
 
     def __init__(
         self,
@@ -275,16 +335,15 @@ class SimpleNeuralField(PotentialBased):
             if _is_iterable(activation_nonlin):
                 self._init_capacity(activation_nonlin[0])
             else:
-                self._init_capacity(activation_nonlin)
+                self._init_capacity(activation_nonlin)  # type: ignore[arg-type]
         else:
             self._log_capacity = None
 
         # Initialize cubic decay and capacity if learnable.
-        if self.potentials_dyn_fcn == pd_cubic and self.kappa_learnable:
+        if (self.potentials_dyn_fcn is pd_cubic) and self.kappa_learnable:
             self._log_kappa.data = self._log_kappa_init
         elif self.potentials_dyn_fcn in [pd_capacity_21, pd_capacity_21_abs, pd_capacity_32, pd_capacity_32_abs]:
-            if self.capacity_learnable:
-                self._log_capacity.data = self._log_capacity_init
+            self._log_capacity.data = self._log_capacity_init
 
         # Move the complete model to the given device.
         self.to(device=device)
@@ -338,13 +397,12 @@ class SimpleNeuralField(PotentialBased):
         Returns:
             Time derivative of the potentials $\frac{dp}{dt}$, of shape `(hidden_size,)`.
         """
-        return self.potentials_dyn_fcn(
-            potentials, stimuli, self.resting_level, self.tau, kappa=self.kappa, capacity=self.capacity
-        )
+        return self.potentials_dyn_fcn(potentials, stimuli, self.resting_level, self.tau, self.kappa, self.capacity)
 
+    # pylint: disable=duplicate-code
     def forward_one_step(
         self, inputs: torch.Tensor, hidden: Optional[torch.Tensor] = None
-    ) -> (torch.Tensor, torch.Tensor):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Get the batch size, and prepare the inputs accordingly.
         batch_size = PotentialBased._infer_batch_size(inputs)
         inputs = inputs.view(batch_size, self.input_size).to(device=self.device)
@@ -358,10 +416,6 @@ class SimpleNeuralField(PotentialBased):
 
         # Scale the previous potentials, and pass them through a nonlinearity. Could also subtract a bias.
         activations_prev = self.potentials_to_activations(potentials)
-
-        # ----------------
-        # Activation Logic
-        # ----------------
 
         # Combine the current input and the hidden variables from the last step.
         self._stimuli_external = self.input_embedding(inputs)
