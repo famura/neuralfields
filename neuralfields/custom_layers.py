@@ -92,8 +92,6 @@ def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
             for i in range(m.weight.data.shape[0]):
                 m.weight.data[i, i] = 1.0  # excite self
 
-    return m
-
 
 class IndependentNonlinearitiesLayer(nn.Module):
     """Neural network layer to add a bias, multiply the result with a scaling factor, and then apply the given
