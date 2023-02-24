@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from dunamai import Version
-
 from neuralfields.custom_layers import IndependentNonlinearitiesLayer, MirroredConv1d, init_param_
 from neuralfields.custom_types import ActivationFunction, PotentialsDynamicsType
 from neuralfields.neural_fields import NeuralField
@@ -21,14 +19,10 @@ from neuralfields.simple_neural_fields import (
 SRC_DIR = Path(__file__).resolve().parent
 EXAMPLES_DIR = SRC_DIR.parent / "examples"
 
-# Get the project's version dynamically.
-VERSION = Version.from_git().base
-
 # Set the public API.
 __all__ = [
     "EXAMPLES_DIR",
     "SRC_DIR",
-    "VERSION",
     "ActivationFunction",
     "IndependentNonlinearitiesLayer",
     "MirroredConv1d",
