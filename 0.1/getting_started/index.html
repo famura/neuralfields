@@ -86,9 +86,8 @@ deploy<span class=w> </span>the<span class=w> </span>docs,<span class=w> </span>
 <span class=w>    </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">CI</span>
 <span class=w>    </span><span class=nt>strategy</span><span class=p>:</span>
 <span class=w>      </span><span class=nt>matrix</span><span class=p>:</span>
-<span class=w>        </span><span class=nt>os</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">[</span><span class=nv>ubuntu-latest</span><span class="p p-Indicator">]</span>
-<span class=w>        </span><span class=c1>#os: [ubuntu-latest, macos-latest, windows-latest]</span>
-<span class=w>        </span><span class=nt>python-version</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">[</span><span class=w> </span><span class=s>&quot;3.8&quot;</span><span class="p p-Indicator">,</span><span class=w> </span><span class=s>&quot;3.11&quot;</span><span class=w> </span><span class="p p-Indicator">]</span>
+<span class=w>        </span><span class=nt>os</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">[</span><span class=nv>ubuntu-latest</span><span class="p p-Indicator">]</span><span class=w> </span><span class=c1># [ubuntu-latest, macos-latest, windows-latest]</span>
+<span class=w>        </span><span class=nt>python-version</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">[</span><span class=w> </span><span class=s>&quot;3.8&quot;</span><span class="p p-Indicator">,</span><span class=w> </span><span class=s>&quot;3.10&quot;</span><span class="p p-Indicator">,</span><span class=w> </span><span class=s>&quot;3.11&quot;</span><span class=w> </span><span class="p p-Indicator">]</span>
 <span class=w>    </span><span class=nt>runs-on</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">${{ matrix.os }}</span>
 <span class=w>    </span><span class=nt>env</span><span class=p>:</span>
 <span class=w>      </span><span class=nt>os</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">${{ matrix.os }}</span>
@@ -203,10 +202,10 @@ deploy<span class=w> </span>the<span class=w> </span>docs,<span class=w> </span>
 <span class=w>          </span><span class=no>sudo apt-get update</span>
 <span class=w>          </span><span class=no>sudo apt-get install --yes curl gcc git</span>
 
-<span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python ${{ matrix.python-version }}</span>
+<span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python 3.10</span>
 <span class=w>        </span><span class=nt>uses</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v4</span>
 <span class=w>        </span><span class=nt>with</span><span class=p>:</span>
-<span class=w>          </span><span class=nt>python-version</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">${{ matrix.python-version }}</span>
+<span class=w>          </span><span class=nt>python-version</span><span class=p>:</span><span class=w> </span><span class=s>&quot;3.10&quot;</span>
 
 <span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Set up poetry</span>
 <span class=w>        </span><span class=nt>run</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">|</span>
