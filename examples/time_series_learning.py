@@ -23,7 +23,7 @@ def load_and_split_data(dataset_name: str = "monthly_sunspots", normalize: bool 
 def simple_training_loop(model: torch.nn.Module, packed_inputs: torch.Tensor, packed_targets: torch.Tensor):
     loss_fcn = torch.nn.MSELoss()
     optim = torch.optim.Adam([{"params": model.parameters()}], lr=1e-2, eps=1e-8)
-    for idx_e in range(4001 if isinstance(model, SimpleNeuralField) else 1001):
+    for idx_e in range(4001 if isinstance(model, SimpleNeuralField) else 801):
         # Reset the gradients.
         optim.zero_grad(set_to_none=True)
 
@@ -74,11 +74,11 @@ if __name__ == "__main__":
         idx_begin = max(idx - len_window, 0)
         inp = data_trn[idx_begin:idx, :].view(-1, dim_data)
 
-        # Pad with zeros.
+        # Pad with zeros. This is not special to the models in this repo, but rather to the dataset structure.
         pad = (0, 0, len_window - inp.size(0), 0)  # from the left pad such that the input length is always 20
         inp_padded = torch.nn.functional.pad(inp, pad, mode="constant", value=0)
 
-        # Store.
+        # Store the data.
         inputs.append(inp_padded)
         targets.append(data_trn[idx, :].view(-1, dim_data))
 
