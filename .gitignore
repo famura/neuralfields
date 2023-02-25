@@ -127,3 +127,6 @@ dmypy.json
 
 # CI/ CD
 exported/
+
+# Trained models
+examples/model.pt
