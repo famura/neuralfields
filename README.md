@@ -19,6 +19,21 @@ It's main characteristic is the lateral in-/exhibition of neurons though their a
 Due to its simplicity and expressiveness, Amari’s work was highly influential and led to several follow-up papers such
 as [2-6] to only name a few.
 
+## Support
+
+If you use code or ideas from this repository for your projects or research, **please cite it**.
+
+```
+@misc{Muratore_neuralfields,
+  author = {Fabio Muratore},
+  title = {neuralfields - A type of potential-based recurrent neural networks implemented with PyTorch},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/famura/neuralfields}}
+}
+```
+
 ## Features
 
 * There are two variants of the neural fields implemented in this repository: one called `NeuralField` that matches
@@ -36,20 +51,11 @@ as [2-6] to only name a few.
   sim-to-real transfer. However, the goal of this repository is to make the implementation **as general as possible**,
   such that it could for example be used as generative model.
 
-## Support
+### Time series learning example
+![](examples/time_series_learning.png) ![](exported/examples/time_series_learning.png)
 
-If you use code or ideas from this repository for your projects or research, **please cite it**.
-
-```
-@misc{Muratore_neuralfields,
-  author = {Fabio Muratore},
-  title = {neuralfields - A type of potential-based recurrent neural networks implemented with PyTorch},
-  year = {2023},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/famura/neuralfields}}
-}
-```
+### Time series generation example
+![](examples/time_series_generation.png) ![](exported/examples/time_series_generation.png)
 
 ## Getting Started
 

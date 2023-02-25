@@ -39,6 +39,14 @@ def create_figure(dataset_name: str) -> plt.Figure:
     return fig
 
 
+def plot_results(fig: plt.Figure) -> None:
+    axs = fig.get_axes()
+    axs[0].plot(predictions_trn, label="predictions")
+    axs[1].plot(predictions_tst, label="predictions")
+    axs[0].legend(loc="upper right", ncol=2)
+    axs[1].legend(loc="upper right", ncol=2)
+
+
 def simple_training_loop(
     model: torch.nn.Module,
     packed_inputs: torch.Tensor,
@@ -79,8 +87,8 @@ if __name__ == "__main__":
     # Configure.
     torch.manual_seed(0)
     use_simplification = False  # switch between models
-    normalize_data = False  # scales the data to be in [-1, 1]
-    dataset_name = "mackey_glass"  # monthly_sunspots or mackey_glass
+    normalize_data = True  # scales the data to be in [-1, 1]
+    dataset_name = "monthly_sunspots"  # monthly_sunspots or mackey_glass
 
     # Get the data.
     data, data_trn, data_tst = load_and_split_data(dataset_name, normalize_data)
@@ -135,13 +143,11 @@ if __name__ == "__main__":
         predictions_tst, _ = model(data_tst[:-1].unsqueeze(0), hidden=None)
         predictions_tst = predictions_tst.squeeze(0).detach().numpy()
 
-    # Safe the model.
+    # Safe the model and the associated data.
     torch.save(model, EXAMPLES_DIR / "model.pt")
+    torch.save(data_trn, EXAMPLES_DIR / "data_trn.pt")
+    torch.save(data_tst, EXAMPLES_DIR / "data_tst.pt")
 
     # Plot the results.
-    axs = fig.get_axes()
-    axs[0].plot(predictions_trn, label="predictions")
-    axs[1].plot(predictions_tst, label="predictions")
-    axs[0].legend(loc="upper right", ncol=2)
-    axs[1].legend(loc="upper right", ncol=2)
+    plot_results(fig)
     plt.show()

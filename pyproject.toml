@@ -270,6 +270,9 @@ sequence = [
   { cmd = "genbadge tests --input-file pytest.xml --output-file docs/exported/tests/badge.svg" },
   { cmd = "pip-licenses --format markdown --with-authors --with-urls --with-description --output-file docs/exported/third_party_licenses.md" },
   { shell = "poe --help > docs/exported/poe_options.txt" },
+  { shell = "mkdir -p docs/exported/examples" },
+  { shell = "cp examples/time_series_learning.png docs/exported/examples/time_series_learning.png" },
+  { shell = "cp examples/time_series_generation.png docs/exported/examples/time_series_generation.png" },
 ]
 help = "Get the git change log to. Next, create the badges. Finally, fetch all thrid party licenses and add them to the documentation."
 
