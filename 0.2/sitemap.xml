@@ -2,67 +2,67 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/contributing/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/getting_started/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/license/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/exported/changelog/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/exported/third_party_licenses/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>None</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/custom_layers/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/custom_types/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/neural_fields/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/potential_based/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://famura.github.io/neuralfields/0.2/reference/simple_neural_fields/</loc>
-         <lastmod>2023-02-24</lastmod>
+         <lastmod>2023-02-25</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
