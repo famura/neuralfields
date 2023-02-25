@@ -5,14 +5,17 @@ See Also:
     # https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728
     # https://github.com/jayleicn/TVQAplus/blob/master/model/cnn.py
 """
+import matplotlib.pyplot as plt
+import seaborn
 import torch
-from matplotlib import pyplot as plt
 from torch import nn
 
 from neuralfields import MirroredConv1d, init_param_
 
 
 if __name__ == "__main__":
+    seaborn.set_theme()
+
     # Configure this script.
     hand_coded_filter = False  # if True, use a ramp from 0 to 1 instead of random weights
     use_depth_wise_conv = False  # just fooling around with that, just False in most cases
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     axs[2].set_ylabel("summed over channels")
 
     # Plot weights.
-    fig_w = plt.figure(figsize=(8, 12))
+    fig_w = plt.figure(figsize=(8, 10))
     gs = fig_w.add_gridspec(nrows=out_channels, ncols=in_channels)
     for j in range(out_channels):
         for k in range(in_channels):
@@ -139,4 +142,5 @@ if __name__ == "__main__":
             ax.set_xlabel(f"in channel {k}")
             ax.set_ylabel(f"out channel {j}")
 
+    plt.tight_layout()
     plt.show()

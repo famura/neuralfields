@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy
+import seaborn
 import torch
 
 from neuralfields import EXAMPLES_DIR, NeuralField, SimpleNeuralField, pd_cubic
@@ -13,6 +14,7 @@ def load_and_split_data(dataset_name: str = "monthly_sunspots", normalize: bool 
     if normalize:
         data /= max(abs(data.min()), abs(data.max()))
 
+    # Make the first half the training set and the second half the test set.
     num_samples = len(data) // 2
     data_trn = data[:num_samples]
     data_tst = data[num_samples : num_samples * 2]
@@ -23,7 +25,7 @@ def load_and_split_data(dataset_name: str = "monthly_sunspots", normalize: bool 
 def simple_training_loop(model: torch.nn.Module, packed_inputs: torch.Tensor, packed_targets: torch.Tensor):
     loss_fcn = torch.nn.MSELoss()
     optim = torch.optim.Adam([{"params": model.parameters()}], lr=1e-2, eps=1e-8)
-    for idx_e in range(4001 if isinstance(model, SimpleNeuralField) else 801):
+    for idx_e in range(4001 if isinstance(model, SimpleNeuralField) else 701):
         # Reset the gradients.
         optim.zero_grad(set_to_none=True)
 
@@ -36,24 +38,29 @@ def simple_training_loop(model: torch.nn.Module, packed_inputs: torch.Tensor, pa
         optim.step()
 
         if idx_e % 10 == 0:
-            print(f"loss: {loss.item()}")
+            print(f"iter: {idx_e: >4} | loss: {loss.item()}")
 
 
 if __name__ == "__main__":
+    seaborn.set_theme()
+
+    # Configure.
     torch.manual_seed(0)
-    use_simplification = False
+    use_simplification = False  # switch between models
+    normalize_data = False  # scales the data to be in [-1, 1]
+    dataset_name = "mackey_glass"  # monthly_sunspots or mackey_glass
 
     # Get the data.
-    data, data_trn, data_tst = load_and_split_data("mackey_glass")
+    data, data_trn, data_tst = load_and_split_data(dataset_name, normalize_data)
     dim_data = data.size(1)
 
     # Plot.
     fig, axs = plt.subplots(2, 1, figsize=(16, 9))
     axs[0].plot(data_trn, label="data train")
     axs[1].plot(data_tst, label="data test")
-    axs[0].set_xlabel("months")
-    axs[0].set_ylabel("monthly spot count")
-    axs[1].set_ylabel("monthly spot count")
+    axs[1].set_xlabel("months" if dataset_name == "monthly_sunspots" else "time")
+    axs[0].set_ylabel("monthly spot count" if dataset_name == "monthly_sunspots" else "")
+    axs[1].set_ylabel("monthly spot count" if dataset_name == "monthly_sunspots" else "")
 
     # Create the neural field.
     if use_simplification:
