@@ -36,11 +36,9 @@ as [2-6] to only name a few.
   sim-to-real transfer. However, the goal of this repository is to make the implementation **as general as possible**,
   such that it could for example be used as generative model.
 
-## Citing
+## Support
 
-If you use code or ideas from this repository for your projects or research, **please cite and star** it.
-It does not cost you anything, and would support me for putting in the effort of providing a clean state-of-the-art
-implementation to you.
+If you use code or ideas from this repository for your projects or research, **please cite it**.
 
 ```
 @misc{Muratore_neuralfields,
