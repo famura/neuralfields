@@ -59,6 +59,10 @@ def pd_linear(
 
     $\tau \dot{p} = s - p$
 
+    Notes:
+        This potential dynamics function is strongly recommended to be used with a [sigmoid][torch.sigmoid] activation
+        function.
+
     Args:
         p: Potential, higher values lead to higher activations.
         s: Stimulus, higher values lead to larger changes of the potentials (depends on the dynamics function).
@@ -86,6 +90,10 @@ def pd_cubic(
     r"""Basic proportional dynamics with additional cubic decay.
 
     $\tau \dot{p} = s + h - p + \kappa (h - p)^3$
+
+    Notes:
+        This potential dynamics function is strongly recommended to be used with a [sigmoid][torch.sigmoid] activation
+        function.
 
     Args:
         p: Potential, higher values lead to higher activations.
@@ -117,7 +125,8 @@ def pd_capacity_21(
     $\tau \dot{p} =  s - (h - p) (1 - \frac{(h - p)^2}{C^2})$
 
     Notes:
-        Intended to be used with a sigmoid activation function.
+        This potential dynamics function is strongly recommended to be used with a [tanh][torch.tanh] activation
+        function.
 
     Args:
         p: Potential, higher values lead to higher activations.
@@ -151,7 +160,8 @@ def pd_capacity_21_abs(
     The "absolute version" of `pd_capacity_21` has a lower magnitude and a lower oder of the resulting polynomial.
 
     Notes:
-        Intended to be used with a sigmoid activation function.
+        This potential dynamics function is strongly recommended to be used with a [tanh][torch.tanh] activation
+        function.
 
     Args:
         p: Potential, higher values lead to higher activations.
@@ -184,7 +194,8 @@ def pd_capacity_32(
     $\tau \dot{p} =  s - (h - p) (1 - \frac{(h - p)^2}{C^2}) (1 - \frac{(2(h - p))^2}{C^2})$
 
     Notes:
-        Intended to be used with a tanh activation function.
+        This potential dynamics function is strongly recommended to be used with a [tanh][torch.tanh] activation
+        function.
 
     Args:
         p: Potential, higher values lead to higher activations.
@@ -225,7 +236,8 @@ def pd_capacity_32_abs(
     The "absolute version" of `pd_capacity_32` is less skewed due to a lower oder of the resulting polynomial.
 
     Notes:
-        Intended to be used with a tanh activation function.
+        This potential dynamics function is strongly recommended to be used with a [tanh][torch.tanh] activation
+        function.
 
     Args:
         p: Potential, higher values lead to higher activations.

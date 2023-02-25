@@ -228,7 +228,10 @@ class PotentialBased(nn.Module, ABC):
 
         Args:
             inputs: Inputs of shape `(batch_size, num_steps, dim_input)` to evaluate the network on.
-            hidden: Initial values of the hidden states, i.e., the potentials. By default, the network
+            hidden: Initial values of the hidden states, i.e., the potentials. By default, the network initialized
+                the hidden state to be all zeros. However, via this argument one can set a specific initial value
+                for the potentials. Depending on the shape of `inputs`, `hidden` is of shape `(hidden_size,)` if
+                the input was not batched, else of shape `(batch_size, hidden_size)`.
 
         Returns:
             The outputs, i.e., the (linearly combined) activations, and all intermediate potential values, both of
