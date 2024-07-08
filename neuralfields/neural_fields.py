@@ -98,6 +98,7 @@ class NeuralField(PotentialBased):
             potentials_init=potentials_init,
             input_embedding=input_embedding,
             output_embedding=output_embedding,
+            device=device,
         )
 
         # Create the custom convolution layer that models the interconnection of neurons, i.e., their potentials.
@@ -113,7 +114,7 @@ class NeuralField(PotentialBased):
             stride=1,
             dilation=1,
             groups=1,
-            # device=device,
+            device=device,
             dtype=dtype,
         )
         init_param_(self.conv_layer, **init_param_kwargs)

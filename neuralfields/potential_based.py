@@ -31,6 +31,7 @@ class PotentialBased(nn.Module, ABC):
         output_size: Optional[int] = None,
         input_embedding: Optional[nn.Module] = None,
         output_embedding: Optional[nn.Module] = None,
+        device: Union[str, torch.device] = "cpu",
     ):
         """
         Args:
@@ -53,6 +54,7 @@ class PotentialBased(nn.Module, ABC):
             output_embedding: Optional (custom) [Module][torch.nn.Module] to compute the outputs from the activations.
                 This module must map the activations of shape (`hidden_size`,) to the outputs of shape (`output_size`,)
                 By default, a [linear layer][torch.nn.Linear] without biases is used.
+            device: Device to move this module to (after initialization).
         """
         # Call torch.nn.Module's constructor.
         super().__init__()
@@ -65,8 +67,8 @@ class PotentialBased(nn.Module, ABC):
         self.input_size = input_size
         self._hidden_size = hidden_size // self.num_recurrent_layers  # hidden size per layer
         self.output_size = self._hidden_size if output_size is None else output_size
-        self._stimuli_external = torch.zeros(self.hidden_size)
-        self._stimuli_internal = torch.zeros(self.hidden_size)
+        self._stimuli_external = torch.zeros(self.hidden_size, device=device)
+        self._stimuli_internal = torch.zeros(self.hidden_size, device=device)
 
         # Create the common layers.
         self.input_embedding = input_embedding or nn.Linear(self.input_size, self._hidden_size, bias=False)
@@ -74,29 +76,33 @@ class PotentialBased(nn.Module, ABC):
 
         # Initialize the values of the potentials.
         if potentials_init is not None:
-            self._potentials_init = potentials_init.detach().clone()
+            self._potentials_init = potentials_init.detach().clone().to(device=device)
         else:
             if activation_nonlin is torch.sigmoid:
-                self._potentials_init = -7 * torch.ones(1, self.hidden_size)
+                self._potentials_init = -7 * torch.ones(1, self.hidden_size, device=device)
             else:
-                self._potentials_init = torch.zeros(1, self.hidden_size)
+                self._potentials_init = torch.zeros(1, self.hidden_size, device=device)
 
         # Initialize the potentials' resting level, i.e., the asymptotic level without stimuli.
-        self.resting_level = nn.Parameter(torch.randn(self.hidden_size), requires_grad=True)
+        self.resting_level = nn.Parameter(torch.randn(self.hidden_size, device=device))
 
         # Initialize the potential dynamics' time constant.
         self.tau_learnable = tau_learnable
-        self._log_tau_init = torch.log(torch.as_tensor(tau_init, dtype=torch.get_default_dtype()).reshape(-1))
+        self._log_tau_init = torch.log(
+            torch.as_tensor(tau_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
+        )
         if self.tau_learnable:
-            self._log_tau = nn.Parameter(self._log_tau_init, requires_grad=True)
+            self._log_tau = nn.Parameter(self._log_tau_init)
         else:
             self._log_tau = self._log_tau_init
 
         # Initialize the potential dynamics' cubic decay.
         self.kappa_learnable = kappa_learnable
-        self._log_kappa_init = torch.log(torch.as_tensor(kappa_init, dtype=torch.get_default_dtype()).reshape(-1))
+        self._log_kappa_init = torch.log(
+            torch.as_tensor(kappa_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
+        )
         if self.kappa_learnable:
-            self._log_kappa = nn.Parameter(self._log_kappa_init, requires_grad=True)
+            self._log_kappa = nn.Parameter(self._log_kappa_init)
         else:
             self._log_kappa = self._log_kappa_init
 
@@ -182,7 +188,7 @@ class PotentialBased(nn.Module, ABC):
         if potentials_init is None:
             if batch_size is None:
                 return self._potentials_init.view(-1)
-            return self._potentials_init.repeat(batch_size, 1)
+            return self._potentials_init.repeat(batch_size, 1).to(device=self.device)
 
         return potentials_init.to(device=self.device)
 
