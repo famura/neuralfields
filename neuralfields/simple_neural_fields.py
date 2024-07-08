@@ -327,6 +327,7 @@ class SimpleNeuralField(PotentialBased):
             potentials_init=potentials_init,
             input_embedding=input_embedding,
             output_embedding=output_embedding,
+            device=device,
         )
 
         # Create the layer that converts the activations of the previous time step into potentials (internal stimulus).
@@ -345,9 +346,9 @@ class SimpleNeuralField(PotentialBased):
         self.capacity_learnable = capacity_learnable
         if self.potentials_dyn_fcn in [pd_capacity_21, pd_capacity_21_abs, pd_capacity_32, pd_capacity_32_abs]:
             if _is_iterable(activation_nonlin):
-                self._init_capacity(activation_nonlin[0])
+                self._init_capacity(activation_nonlin[0], device)
             else:
-                self._init_capacity(activation_nonlin)  # type: ignore[arg-type]
+                self._init_capacity(activation_nonlin, device)  # type: ignore[arg-type]
         else:
             self._log_capacity = None
 
@@ -360,7 +361,7 @@ class SimpleNeuralField(PotentialBased):
         # Move the complete model to the given device.
         self.to(device=device)
 
-    def _init_capacity(self, activation_nonlin: ActivationFunction) -> None:
+    def _init_capacity(self, activation_nonlin: ActivationFunction, device: Union[str, torch.device]) -> None:
         """Initialize the value of the capacity parameter $C$ depending on the activation function.
 
         Args:
@@ -368,19 +369,15 @@ class SimpleNeuralField(PotentialBased):
         """
         if activation_nonlin is torch.sigmoid:
             # sigmoid(7.) approx 0.999
-            self._log_capacity_init = torch.log(torch.tensor([7.0], dtype=torch.get_default_dtype()))
+            self._log_capacity_init = torch.log(torch.tensor([7.0], device=device, dtype=torch.get_default_dtype()))
             self._log_capacity = (
-                nn.Parameter(self._log_capacity_init, requires_grad=True)
-                if self.capacity_learnable
-                else self._log_capacity_init
+                nn.Parameter(self._log_capacity_init) if self.capacity_learnable else self._log_capacity_init
             )
         elif activation_nonlin is torch.tanh:
             # tanh(3.8) approx 0.999
-            self._log_capacity_init = torch.log(torch.tensor([3.8], dtype=torch.get_default_dtype()))
+            self._log_capacity_init = torch.log(torch.tensor([3.8], device=device, dtype=torch.get_default_dtype()))
             self._log_capacity = (
-                nn.Parameter(self._log_capacity_init, requires_grad=True)
-                if self.capacity_learnable
-                else self._log_capacity_init
+                nn.Parameter(self._log_capacity_init) if self.capacity_learnable else self._log_capacity_init
             )
         else:
             raise ValueError(

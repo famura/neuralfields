@@ -210,11 +210,13 @@ class MirroredConv1d(_ConvNd):
         self.half_kernel_size = math.ceil(self.weight.size(2) / 2)  # kernel_size = 4 --> 2, kernel_size = 5 --> 3
 
         # Initialize the weights values the same way PyTorch does.
-        new_weight_init = torch.zeros(self.orig_weight_shape[0], self.orig_weight_shape[1], self.half_kernel_size)
+        new_weight_init = torch.zeros(
+            self.orig_weight_shape[0], self.orig_weight_shape[1], self.half_kernel_size, device=device
+        )
         nn.init.kaiming_uniform_(new_weight_init, a=math.sqrt(5))
 
         # Overwrite the weight attribute (transposed is False by default for the Conv1d module, we don't use it here).
-        self.weight = nn.Parameter(new_weight_init, requires_grad=True)
+        self.weight = nn.Parameter(new_weight_init)
 
     def forward(self, inp: torch.Tensor) -> torch.Tensor:
         """Computes the 1-dim convolution just like [Conv1d][torch.nn.Conv1d], however, the kernel has mirrored weights,
@@ -228,7 +230,7 @@ class MirroredConv1d(_ConvNd):
             3-dim output tensor just like for [Conv1d][torch.nn.Conv1d].
         """
         # Reconstruct symmetric weights for convolution (original size).
-        mirr_weight = torch.empty(self.orig_weight_shape, dtype=inp.dtype)
+        mirr_weight = torch.empty(self.orig_weight_shape, dtype=inp.dtype, device=self.weight.device)
 
         # Loop over input channels.
         for i in range(self.orig_weight_shape[1]):
