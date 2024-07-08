@@ -39,7 +39,7 @@ from neuralfields import (
 @pytest.mark.parametrize(
     "init_param_kwargs", [None, dict(self_centric_init=True)], ids=["default_init", "self_centric_init"]
 )
-@pytest.mark.parametrize("device", ["cpu", pytest.param("gpu", marks=m_needs_cuda)], ids=["cpu", "gpu"])
+@pytest.mark.parametrize("device", ["cpu", pytest.param("cuda", marks=m_needs_cuda)], ids=["cpu", "cuda"])
 def test_simple_neural_fields(
     input_size: int,
     output_size: Optional[int],

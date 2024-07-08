@@ -25,7 +25,7 @@ from neuralfields import ActivationFunction, NeuralField, PotentialBased
 @pytest.mark.parametrize("kappa_learnable", [True, False], ids=["learnable_kappa", "fixed_kappa"])
 @pytest.mark.parametrize("potentials_init", [None], ids=["default_pot_init"])
 @pytest.mark.parametrize("init_param_kwargs", [None, dict(bell=True)], ids=["default_init", "bell_init"])
-@pytest.mark.parametrize("device", ["cpu", pytest.param("gpu", marks=m_needs_cuda)], ids=["cpu", "gpu"])
+@pytest.mark.parametrize("device", ["cpu", pytest.param("cuda", marks=m_needs_cuda)], ids=["cpu", "cuda"])
 def test_neural_fields(
     input_size: int,
     hidden_size: int,
