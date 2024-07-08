@@ -182,7 +182,7 @@ class PotentialBased(nn.Module, ABC):
         if potentials_init is None:
             if batch_size is None:
                 return self._potentials_init.view(-1)
-            return self._potentials_init.repeat(batch_size, 1)
+            return self._potentials_init.repeat(batch_size, 1).to(device=self.device)
 
         return potentials_init.to(device=self.device)
 

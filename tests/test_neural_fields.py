@@ -76,13 +76,15 @@ def test_neural_fields(
     # Get and set the parameters.
     param_vec = nf.param_values
     assert isinstance(param_vec, torch.Tensor)
-    new_param_vec = param_vec + torch.randn_like(param_vec)
+    new_param_vec = param_vec + torch.randn_like(param_vec, device=device)
     nf.param_values = new_param_vec
     assert torch.allclose(nf.param_values, new_param_vec)
 
     # Compute dp/dt.
     for _ in range(10):
-        p_dot = nf.potentials_dot(potentials=torch.randn(hidden_size), stimuli=torch.randn(hidden_size))
+        p_dot = nf.potentials_dot(
+            potentials=torch.randn(hidden_size, device=device), stimuli=torch.randn(hidden_size, device=device)
+        )
         assert isinstance(p_dot, torch.Tensor)
         assert p_dot.shape == (hidden_size,)
         assert isinstance(nf.stimuli_internal, torch.Tensor)
@@ -93,7 +95,7 @@ def test_neural_fields(
     # Compute the unbatched forward pass.
     hidden = None
     for _ in range(5):
-        outputs, hidden_next = nf.forward_one_step(inputs=torch.randn(input_size), hidden=hidden)
+        outputs, hidden_next = nf.forward_one_step(inputs=torch.randn(input_size, device=device), hidden=hidden)
         hidden = hidden_next.clone()
         assert isinstance(outputs, torch.Tensor)
         assert outputs.shape == (1, output_size or nf.hidden_size)
@@ -103,7 +105,9 @@ def test_neural_fields(
     # Compute the batched forward pass.
     hidden = None
     for _ in range(5):
-        outputs, hidden_next = nf.forward_one_step(inputs=torch.randn(batch_size, input_size), hidden=hidden)
+        outputs, hidden_next = nf.forward_one_step(
+            inputs=torch.randn(batch_size, input_size, device=device), hidden=hidden
+        )
         hidden = hidden_next.clone()
         assert isinstance(outputs, torch.Tensor)
         assert outputs.shape == (batch_size, output_size or nf.hidden_size)
@@ -111,8 +115,10 @@ def test_neural_fields(
         assert hidden_next.shape == (batch_size, nf.hidden_size)
 
     # Evaluate a time series of inputs.
-    for hidden in (None, torch.randn(batch_size, hidden_size)):
-        output_seq, hidden_seq = nf.forward(inputs=torch.randn(batch_size, len_input_seq, input_size), hidden=hidden)
+    for hidden in (None, torch.randn(batch_size, hidden_size, device=device)):
+        output_seq, hidden_seq = nf.forward(
+            inputs=torch.randn(batch_size, len_input_seq, input_size, device=device), hidden=hidden
+        )
         assert isinstance(output_seq, torch.Tensor)
         assert output_seq.shape == (batch_size, len_input_seq, output_size or nf.hidden_size)
         assert isinstance(hidden_seq, torch.Tensor)
