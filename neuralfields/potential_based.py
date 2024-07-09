@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence, Tuple, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.utils.data
@@ -12,11 +12,18 @@ from neuralfields.custom_types import ActivationFunction
 class PotentialBased(nn.Module, ABC):
     """Base class for all potential-based recurrent neutral networks."""
 
-    _sqrt_tau: Union[torch.Tensor, nn.Parameter]
-    _sqrt_kappa: Union[torch.Tensor, nn.Parameter]
+    _tau_opt: Union[torch.Tensor, nn.Parameter]
+    _kappa_opt: Union[torch.Tensor, nn.Parameter]
 
+    _tau_min: Union[float, int] = 1e-5
+    r"""Minimum value for the time constant $\tau$ to avoid numerical instabilities."""
     _potentials_max: Union[float, int] = 100
     """Threshold to clip the potentials symmetrically (at a very large value) for numerical stability."""
+
+    transform_to_opt_space: Callable[[torch.Tensor], torch.Tensor] = torch.log
+    """Function to map parameters to the optimization space."""
+    transform_to_img_space: Callable[[torch.Tensor], torch.Tensor] = torch.exp
+    """Function to map parameters to the image space of the original problem."""
 
     def __init__(
         self,
@@ -90,25 +97,19 @@ class PotentialBased(nn.Module, ABC):
         self.tau_learnable = tau_learnable
         if tau_init <= 0:
             raise ValueError("The time constant tau must be initialized positive.")
-        self._sqrt_tau_init = torch.sqrt(
-            torch.as_tensor(tau_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
+        self._tau_opt_init = PotentialBased.transform_to_opt_space(
+            torch.as_tensor(tau_init - PotentialBased._tau_min, device=device, dtype=torch.get_default_dtype())
         )
-        if self.tau_learnable:
-            self._sqrt_tau = nn.Parameter(self._sqrt_tau_init)
-        else:
-            self._sqrt_tau = self._sqrt_tau_init
+        self._tau_opt = nn.Parameter(self._tau_opt_init.reshape(-1), requires_grad=self.tau_learnable)
 
         # Initialize the potential dynamics' cubic decay.
         self.kappa_learnable = kappa_learnable
         if kappa_init < 0:
             raise ValueError("The cubic decay kappa must be initialized non-negative.")
-        self._sqrt_kappa_init = torch.sqrt(
+        self._kappa_opt_init = PotentialBased.transform_to_opt_space(
             torch.as_tensor(kappa_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
         )
-        if self.kappa_learnable:
-            self._sqrt_kappa = nn.Parameter(self._sqrt_kappa_init)
-        else:
-            self._sqrt_kappa = self._sqrt_kappa_init
+        self._kappa_opt = nn.Parameter(self._kappa_opt_init, requires_grad=self.kappa_learnable)
 
     def extra_repr(self) -> str:
         return f"tau_learnable={self.tau_learnable}, kappa_learnable={self.kappa_learnable}"
@@ -131,8 +132,8 @@ class PotentialBased(nn.Module, ABC):
         assert (
             self.input_embedding.weight.device
             == self.resting_level.device
-            == self._sqrt_tau.device
-            == self._sqrt_kappa.device
+            == self._tau_opt.device
+            == self._kappa_opt.device
         )
         return self.input_embedding.weight.device
 
@@ -158,12 +159,12 @@ class PotentialBased(nn.Module, ABC):
     @property
     def tau(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the timescale parameter, called $\tau$ in the original paper [Amari_77]."""
-        return torch.square(self._sqrt_tau)
+        return PotentialBased.transform_to_img_space(self._tau_opt) + PotentialBased._tau_min
 
     @property
     def kappa(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the cubic decay parameter $\kappa$."""
-        return torch.square(self._sqrt_kappa)
+        return PotentialBased.transform_to_img_space(self._kappa_opt)
 
     @abstractmethod
     def potentials_dot(self, potentials: torch.Tensor, stimuli: torch.Tensor) -> torch.Tensor:

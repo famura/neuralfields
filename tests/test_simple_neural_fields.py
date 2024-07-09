@@ -155,6 +155,16 @@ def test_simple_neural_fields_init_potentials():
     assert torch.allclose(snf._potentials_init, 5 * torch.ones(7))
 
 
+@pytest.mark.parametrize("kappa_init", [0.0, 1e-1], ids=["kappa_0", "kappa_1e-1"])
+@pytest.mark.parametrize("tau_init", [1.0, 1e-4], ids=["tau_1", "tau_1e-4"])
+def test_neural_fields_trafos(kappa_init: float, tau_init: float):
+    snf = SimpleNeuralField(
+        input_size=6, output_size=7, potentials_dyn_fcn=pd_capacity_21, kappa_init=kappa_init, tau_init=tau_init
+    )
+    assert torch.allclose(snf.kappa, kappa_init * torch.ones(1))
+    assert torch.allclose(snf.tau, tau_init * torch.ones(1))
+
+
 def test_simple_neural_fields_fail():
     with pytest.raises(ValueError):
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
