@@ -129,11 +129,11 @@ class IndependentNonlinearitiesLayer(nn.Module):
         # Create and initialize the parameters, and the activation function.
         self.nonlin = copy.deepcopy(nonlin) if _is_iterable(nonlin) else nonlin
         if weight:
-            self.weight = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()), requires_grad=True)
+            self.weight = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
             self.weight = None
         if bias:
-            self.bias = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()), requires_grad=True)
+            self.bias = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
             self.bias = None
         init_param_(self)

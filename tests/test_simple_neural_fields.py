@@ -32,7 +32,7 @@ from neuralfields import (
 @pytest.mark.parametrize("activation_nonlin", [torch.sigmoid, torch.tanh], ids=["sigmoid", "tanh"])
 @pytest.mark.parametrize("tau_init", [10], ids=["default_tau_init"])
 @pytest.mark.parametrize("tau_learnable", [True, False], ids=["learnable_tau", "fixed_tau"])
-@pytest.mark.parametrize("kappa_init", [0, 1e-2], ids=["kappa_init_0", "1e-2"])
+@pytest.mark.parametrize("kappa_init", [0, 1e-2], ids=["kappa_0", "kappa_1e-2"])
 @pytest.mark.parametrize("kappa_learnable", [True, False], ids=["learnable_kappa", "fixed_kappa"])
 @pytest.mark.parametrize("capacity_learnable", [True, False], ids=["learnable_capacity", "fixed_capacity"])
 @pytest.mark.parametrize("potentials_init", [None], ids=["default_pot_init"])
@@ -158,6 +158,12 @@ def test_simple_neural_fields_init_potentials():
 def test_simple_neural_fields_fail():
     with pytest.raises(ValueError):
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
+
+    with pytest.raises(ValueError):
+        SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, tau_init=0)
+
+    with pytest.raises(ValueError):
+        SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, kappa_init=-1)
 
     with pytest.raises(ValueError):
         pd_linear(
