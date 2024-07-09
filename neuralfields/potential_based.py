@@ -7,7 +7,6 @@ from torch import nn
 from torch.nn.utils import convert_parameters
 
 from neuralfields.custom_types import ActivationFunction
-from neuralfields.param_tranform import inv_softplus
 
 
 class PotentialBased(nn.Module, ABC):
@@ -17,13 +16,13 @@ class PotentialBased(nn.Module, ABC):
     _kappa_opt: Union[torch.Tensor, nn.Parameter]
 
     _tau_min: Union[float, int] = 1e-5
-    """Minimum value for the time constant $\tau$ to avoid numerical instabilities."""
+    r"""Minimum value for the time constant $\tau$ to avoid numerical instabilities."""
     _potentials_max: Union[float, int] = 100
     """Threshold to clip the potentials symmetrically (at a very large value) for numerical stability."""
 
-    transform_to_opt_space: Callable[[torch.Tensor], torch.Tensor] = inv_softplus
+    transform_to_opt_space: Callable[[torch.Tensor], torch.Tensor] = torch.log
     """Function to map parameters to the optimization space."""
-    transform_to_img_space: Callable[[torch.Tensor], torch.Tensor] = torch.nn.functional.softplus
+    transform_to_img_space: Callable[[torch.Tensor], torch.Tensor] = torch.exp
     """Function to map parameters to the image space of the original problem."""
 
     def __init__(
