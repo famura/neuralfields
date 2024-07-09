@@ -141,6 +141,14 @@ def test_neural_fields_init_hidden(batch_size: Optional[int], potentials_init: O
     assert isinstance(hidden, torch.Tensor)
 
 
+@pytest.mark.parametrize("kappa_init", [0.0, 1e-1], ids=["kappa_0", "kappa_1e-1"])
+@pytest.mark.parametrize("tau_init", [1.0, 1e-4], ids=["tau_1", "tau_1e-4"])
+def test_neural_fields_trafos(kappa_init: float, tau_init: float):
+    nf = NeuralField(input_size=3, hidden_size=4, kappa_init=kappa_init, tau_init=tau_init)
+    assert torch.allclose(nf.kappa, kappa_init * torch.ones(1))
+    assert torch.allclose(nf.tau, tau_init * torch.ones(1))
+
+
 def test_neural_fields_init_potentials():
     nf = NeuralField(input_size=6, hidden_size=7, potentials_init=5 * torch.ones(7))
     assert torch.allclose(nf._potentials_init, 5 * torch.ones(7))

@@ -269,7 +269,7 @@ class SimpleNeuralField(PotentialBased):
         Robots and Systems, 2012.
     """
 
-    _sqrt_capacity: Optional[Union[torch.Tensor, nn.Parameter]]
+    _capacity_opt: Optional[Union[torch.Tensor, nn.Parameter]]
 
     def __init__(
         self,
@@ -350,13 +350,13 @@ class SimpleNeuralField(PotentialBased):
             else:
                 self._init_capacity(activation_nonlin, device)  # type: ignore[arg-type]
         else:
-            self._sqrt_capacity = None
+            self._capacity_opt = None
 
         # Initialize cubic decay and capacity if learnable.
         if (self.potentials_dyn_fcn is pd_cubic) and self.kappa_learnable:
-            self._sqrt_kappa.data = self._sqrt_kappa_init
+            self._kappa_opt.data = self._kappa_opt_init
         elif self.potentials_dyn_fcn in [pd_capacity_21, pd_capacity_21_abs, pd_capacity_32, pd_capacity_32_abs]:
-            self._sqrt_capacity.data = self._sqrt_capacity_init
+            self._capacity_opt.data = self._capacity_opt_init
 
         # Move the complete model to the given device.
         self.to(device=device)
@@ -369,21 +369,20 @@ class SimpleNeuralField(PotentialBased):
         """
         if activation_nonlin is torch.sigmoid:
             # sigmoid(7.) approx 0.999
-            self._sqrt_capacity_init = torch.sqrt(torch.tensor([7.0], device=device, dtype=torch.get_default_dtype()))
-            self._sqrt_capacity = (
-                nn.Parameter(self._sqrt_capacity_init) if self.capacity_learnable else self._sqrt_capacity_init
+            self._capacity_opt_init = PotentialBased.transform_to_opt_space(
+                torch.tensor([7.0], device=device, dtype=torch.get_default_dtype())
             )
         elif activation_nonlin is torch.tanh:
             # tanh(3.8) approx 0.999
-            self._sqrt_capacity_init = torch.sqrt(torch.tensor([3.8], device=device, dtype=torch.get_default_dtype()))
-            self._sqrt_capacity = (
-                nn.Parameter(self._sqrt_capacity_init) if self.capacity_learnable else self._sqrt_capacity_init
+            self._capacity_opt_init = PotentialBased.transform_to_opt_space(
+                torch.tensor([3.8], device=device, dtype=torch.get_default_dtype())
             )
         else:
             raise ValueError(
                 "For the potential dynamics including a capacity, only output nonlinearities of type "
                 "torch.sigmoid and torch.tanh are supported!"
             )
+        self._capacity_opt = nn.Parameter(self._capacity_opt_init, requires_grad=self.capacity_learnable)
 
     def extra_repr(self) -> str:
         return super().extra_repr() + f", capacity_learnable={self.capacity_learnable}"
@@ -391,7 +390,7 @@ class SimpleNeuralField(PotentialBased):
     @property
     def capacity(self) -> Optional[torch.Tensor]:
         """Get the capacity parameter (exists for capacity-based dynamics functions), otherwise return `None`."""
-        return None if self._sqrt_capacity is None else torch.square(self._sqrt_capacity)
+        return None if self._capacity_opt is None else PotentialBased.transform_to_img_space(self._capacity_opt)
 
     def potentials_dot(self, potentials: torch.Tensor, stimuli: torch.Tensor) -> torch.Tensor:
         r"""Compute the derivative of the neurons' potentials per time step.
