@@ -160,6 +160,12 @@ def test_simple_neural_fields_fail():
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
 
     with pytest.raises(ValueError):
+        SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, tau_init=0)
+
+    with pytest.raises(ValueError):
+        SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, kappa_init=0)
+
+    with pytest.raises(ValueError):
         pd_linear(
             p=torch.randn(3), s=torch.randn(3), h=torch.randn(3), tau=torch.tensor(-1.0), kappa=None, capacity=None
         )

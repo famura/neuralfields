@@ -88,6 +88,8 @@ class PotentialBased(nn.Module, ABC):
 
         # Initialize the potential dynamics' time constant.
         self.tau_learnable = tau_learnable
+        if tau_init <= 0:
+            raise ValueError("The time constant tau must be initialized positive.")
         self._log_tau_init = torch.log(
             torch.as_tensor(tau_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
         )
@@ -98,6 +100,8 @@ class PotentialBased(nn.Module, ABC):
 
         # Initialize the potential dynamics' cubic decay.
         self.kappa_learnable = kappa_learnable
+        if kappa_init <= 0:
+            raise ValueError("The cubic decay kappa must be initialized positive.")
         self._log_kappa_init = torch.log(
             torch.as_tensor(kappa_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
         )
