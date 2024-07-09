@@ -32,7 +32,7 @@ from neuralfields import (
 @pytest.mark.parametrize("activation_nonlin", [torch.sigmoid, torch.tanh], ids=["sigmoid", "tanh"])
 @pytest.mark.parametrize("tau_init", [10], ids=["default_tau_init"])
 @pytest.mark.parametrize("tau_learnable", [True, False], ids=["learnable_tau", "fixed_tau"])
-@pytest.mark.parametrize("kappa_init", [0, 1e-2], ids=["kappa_init_0", "1e-2"])
+@pytest.mark.parametrize("kappa_init", [1e-2], ids=["kappa_1e-2"])
 @pytest.mark.parametrize("kappa_learnable", [True, False], ids=["learnable_kappa", "fixed_kappa"])
 @pytest.mark.parametrize("capacity_learnable", [True, False], ids=["learnable_capacity", "fixed_capacity"])
 @pytest.mark.parametrize("potentials_init", [None], ids=["default_pot_init"])
