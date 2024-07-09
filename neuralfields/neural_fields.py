@@ -32,7 +32,7 @@ class NeuralField(PotentialBased):
         conv_pooling_norm: int = 1,
         tau_init: Union[float, int] = 10,
         tau_learnable: bool = True,
-        kappa_init: Union[float, int] = 0,
+        kappa_init: Union[float, int] = 1e-5,
         kappa_learnable: bool = True,
         potentials_init: Optional[torch.Tensor] = None,
         init_param_kwargs: Optional[dict] = None,

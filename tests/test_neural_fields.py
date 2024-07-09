@@ -21,7 +21,7 @@ from neuralfields import ActivationFunction, NeuralField, PotentialBased
 @pytest.mark.parametrize("conv_out_channels", [1, 5], ids=["1dim_conv_out", "5dim_conv_out"])
 @pytest.mark.parametrize("tau_init", [10], ids=["default_tau_init"])
 @pytest.mark.parametrize("tau_learnable", [True, False], ids=["learnable_tau", "fixed_tau"])
-@pytest.mark.parametrize("kappa_init", [1e-2], ids=["kappa_1e-2"])
+@pytest.mark.parametrize("kappa_init", [0, 1e-2], ids=["kappa_0", "kappa_1e-2"])
 @pytest.mark.parametrize("kappa_learnable", [True, False], ids=["learnable_kappa", "fixed_kappa"])
 @pytest.mark.parametrize("potentials_init", [None], ids=["default_pot_init"])
 @pytest.mark.parametrize("init_param_kwargs", [None, dict(bell=True)], ids=["default_init", "bell_init"])

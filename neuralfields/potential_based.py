@@ -12,8 +12,8 @@ from neuralfields.custom_types import ActivationFunction
 class PotentialBased(nn.Module, ABC):
     """Base class for all potential-based recurrent neutral networks."""
 
-    _log_tau: Union[torch.Tensor, nn.Parameter]
-    _log_kappa: Union[torch.Tensor, nn.Parameter]
+    _sqrt_tau: Union[torch.Tensor, nn.Parameter]
+    _sqrt_kappa: Union[torch.Tensor, nn.Parameter]
 
     _potentials_max: Union[float, int] = 100
     """Threshold to clip the potentials symmetrically (at a very large value) for numerical stability."""
@@ -90,25 +90,25 @@ class PotentialBased(nn.Module, ABC):
         self.tau_learnable = tau_learnable
         if tau_init <= 0:
             raise ValueError("The time constant tau must be initialized positive.")
-        self._log_tau_init = torch.log(
+        self._sqrt_tau_init = torch.sqrt(
             torch.as_tensor(tau_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
         )
         if self.tau_learnable:
-            self._log_tau = nn.Parameter(self._log_tau_init)
+            self._sqrt_tau = nn.Parameter(self._sqrt_tau_init)
         else:
-            self._log_tau = self._log_tau_init
+            self._sqrt_tau = self._sqrt_tau_init
 
         # Initialize the potential dynamics' cubic decay.
         self.kappa_learnable = kappa_learnable
-        if kappa_init <= 0:
-            raise ValueError("The cubic decay kappa must be initialized positive.")
-        self._log_kappa_init = torch.log(
+        if kappa_init < 0:
+            raise ValueError("The cubic decay kappa must be initialized non-negative.")
+        self._sqrt_kappa_init = torch.sqrt(
             torch.as_tensor(kappa_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
         )
         if self.kappa_learnable:
-            self._log_kappa = nn.Parameter(self._log_kappa_init)
+            self._sqrt_kappa = nn.Parameter(self._sqrt_kappa_init)
         else:
-            self._log_kappa = self._log_kappa_init
+            self._sqrt_kappa = self._sqrt_kappa_init
 
     def extra_repr(self) -> str:
         return f"tau_learnable={self.tau_learnable}, kappa_learnable={self.kappa_learnable}"
@@ -131,8 +131,8 @@ class PotentialBased(nn.Module, ABC):
         assert (
             self.input_embedding.weight.device
             == self.resting_level.device
-            == self._log_tau.device
-            == self._log_kappa.device
+            == self._sqrt_tau.device
+            == self._sqrt_kappa.device
         )
         return self.input_embedding.weight.device
 
@@ -158,12 +158,12 @@ class PotentialBased(nn.Module, ABC):
     @property
     def tau(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the timescale parameter, called $\tau$ in the original paper [Amari_77]."""
-        return torch.exp(self._log_tau)
+        return torch.square(self._sqrt_tau)
 
     @property
     def kappa(self) -> Union[torch.Tensor, nn.Parameter]:
         r"""Get the cubic decay parameter $\kappa$."""
-        return torch.exp(self._log_kappa)
+        return torch.square(self._sqrt_kappa)
 
     @abstractmethod
     def potentials_dot(self, potentials: torch.Tensor, stimuli: torch.Tensor) -> torch.Tensor:
