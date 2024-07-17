@@ -369,14 +369,10 @@ class SimpleNeuralField(PotentialBased):
         """
         if activation_nonlin is torch.sigmoid:
             # sigmoid(7.) approx 0.999
-            return PotentialBased.transform_to_opt_space(
-                torch.tensor([7.0], dtype=torch.get_default_dtype())
-            )
+            return PotentialBased.transform_to_opt_space(torch.tensor([7.0], dtype=torch.get_default_dtype()))
         elif activation_nonlin is torch.tanh:
             # tanh(3.8) approx 0.999
-            return PotentialBased.transform_to_opt_space(
-                torch.tensor([3.8], dtype=torch.get_default_dtype())
-            )
+            return PotentialBased.transform_to_opt_space(torch.tensor([3.8], dtype=torch.get_default_dtype()))
         raise NotImplementedError(
             "For the potential dynamics including a capacity, the initialization heuristic only supports "
             "the activation functions `torch.sigmoid` and `torch.tanh`!"
