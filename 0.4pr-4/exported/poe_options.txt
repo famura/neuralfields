@@ -1,0 +1,45 @@
+Poe the Poet - A task runner that works well with poetry.
+version 0.17.1
+
+USAGE
+  poe [-h] [-v | -q] [--root PATH] [--ansi | --no-ansi] task [task arguments]
+
+GLOBAL OPTIONS
+  -h, --help     Show this help page and exit
+  --version      Print the version and exit
+  -v, --verbose  Increase command output (repeatable)
+  -q, --quiet    Decrease command output (repeatable)
+  -d, --dry-run  Print the task contents but don't actually run it
+  --root PATH    Specify where to find the pyproject.toml
+  --ansi         Force enable ANSI output
+  --no-ansi      Force disable ANSI output
+
+CONFIGURED TASKS
+  bump-version-tag         Bump version. This creates a new git tag based on the desired version part. Note that this task does not
+actually push the tag. You can do this manually, e.g. by running 'poe push-latest-version-tag'.
+    part                   Part of version being bumped. Allowed values: patch, minor, major.
+    --release              Wether this is a release. Then, the tag will be annotated.
+  clean                    Clean up all temporary files.
+  format                   Format or check Python files with black, isort, pyupgrade & autoflake.
+    --check                If true, only check if the files are formatted but do not format them.
+    files                  List of files (optional).
+  lint                     Lint Python files with mypy, pylint, and bandit. The reports are stored in the given directory.
+    files                  List of files or directories (optional).
+    --reportdir            Diretory to write the linters' reports to (optional).
+  test                     Run the project's tests using pytest (with --exitfirst). Then compute the test coverage and compile it to html.
+  docs                     Build the docs (needs completed test task).
+  deploy-docs              Deploy the docs (needs completed docs task).
+    --alias                Version alias.
+    --push                 Wether to push the docs to GitHub pages.
+    --version-postfix      Information appended to version (optional).
+  deploy-package           Deploy package to PyPI (no --repository PRIVATE_REPO is needed).
+    --username             Repository user name.
+    --password             Repository password / access token.
+  push-latest-version-tag  Push the latest version tag.
+  release                  Make a new (stable) release. This will test the package, create a new tag based on the version, build and
+deploy the docs, and finally push the new tag to remote.
+    part                   Release type. Allowed values: patch, minor, major.
+    --password             The repository password / access token.
+    --username             The repository user name.
+
+
