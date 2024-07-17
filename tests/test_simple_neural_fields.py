@@ -166,7 +166,7 @@ def test_neural_fields_trafos(kappa_init: float, tau_init: float):
 
 
 def test_simple_neural_fields_fail():
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
 
     with pytest.raises(ValueError):
