@@ -115,7 +115,7 @@ class IndependentNonlinearitiesLayer(nn.Module):
             in_features: Number of dimensions of each input sample.
             nonlin: The nonlinear function to apply.
             bias: If `True`, a learnable bias is subtracted, else no bias is used.
-            weight: If `True`, the input is multiplied with a learnable scaling factor.
+            weight: If `True`, the input is multiplied with a learnable scaling factor, else no weighting is used.
         """
         if not callable(nonlin):
             if len(nonlin) != in_features:
@@ -131,11 +131,11 @@ class IndependentNonlinearitiesLayer(nn.Module):
         if weight:
             self.weight = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
-            self.weight = torch.ones(in_features, dtype=torch.get_default_dtype())
+            self.register_buffer("weight", torch.ones(in_features, dtype=torch.get_default_dtype()))
         if bias:
             self.bias = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
-            self.bias = torch.zeros(in_features, dtype=torch.get_default_dtype())
+            self.register_buffer("bias", torch.zeros(in_features, dtype=torch.get_default_dtype()))
 
         init_param_(self)
 
@@ -153,8 +153,7 @@ class IndependentNonlinearitiesLayer(nn.Module):
         Returns:
             Output tensor.
         """
-        tmp = inp + self.bias
-        tmp = self.weight * tmp
+        tmp = self.weight * (inp + self.bias)
 
         # Every dimension runs through an individual nonlinearity.
         if _is_iterable(self.nonlin):
