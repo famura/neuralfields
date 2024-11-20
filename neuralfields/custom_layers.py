@@ -100,8 +100,8 @@ class IndependentNonlinearitiesLayer(nn.Module):
     The scaling and the bias are learnable parameters.
     """
 
-    weight: Optional[nn.Parameter]
-    bias: Optional[nn.Parameter]
+    weight: Union[nn.Parameter, torch.Tensor]
+    bias: Union[nn.Parameter, torch.Tensor]
 
     def __init__(
         self,
@@ -131,15 +131,16 @@ class IndependentNonlinearitiesLayer(nn.Module):
         if weight:
             self.weight = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
-            self.weight = None
+            self.weight = torch.ones(in_features, dtype=torch.get_default_dtype())
         if bias:
             self.bias = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
-            self.bias = None
+            self.bias = torch.zeros(in_features, dtype=torch.get_default_dtype())
+
         init_param_(self)
 
     def extra_repr(self) -> str:
-        return f"in_features={self.weight.numel()}, weight={self.weight is not None}, " f"bias={self.bias is not None}"
+        return f"in_features={self.weight.numel()}, weight={self.weight}, " f"bias={self.bias}"
 
     def forward(self, inp: torch.Tensor) -> torch.Tensor:
         """Apply a bias, scaling, and a nonliterary to each input separately.
@@ -152,11 +153,8 @@ class IndependentNonlinearitiesLayer(nn.Module):
         Returns:
             Output tensor.
         """
-        # Add bias if desired.
-        tmp = inp + self.bias if self.bias is not None else inp
-
-        # Apply weights if desired.
-        tmp = self.weight * tmp if self.weight is not None else tmp
+        tmp = inp + self.bias
+        tmp = self.weight * tmp
 
         # Every dimension runs through an individual nonlinearity.
         if _is_iterable(self.nonlin):
