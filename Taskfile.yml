@@ -1,0 +1,186 @@
+version: '3'
+
+vars:
+  UV_RUN: uv run --locked
+  PYTHON_FILES:
+    sh: find . -type f -name '*.py' -not -path './.git/*' -not -path './.venv/*'
+  LINT_FILES: '{{.LINT_FILES | default "neuralfields"}}'
+  REPORTDIR: '{{.REPORTDIR | default ".linting_reports"}}'
+  PART: '{{.PART | default "minor"}}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  install-prerequisites:
+    desc: Install system prerequisites for the current OS
+    cmds:
+      - task: install-prerequisites-linux
+      - task: install-prerequisites-macos
+
+  install-prerequisites-linux:
+    internal: true
+    platforms: [linux]
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    cmds:
+      - sudo apt-get update
+      - sudo apt-get install --yes curl gcc git
+
+  install-prerequisites-macos:
+    internal: true
+    platforms: [darwin]
+    cmds:
+      - brew install curl gcc git
+
+  sync:
+    desc: Install runtime and development dependencies
+    cmds:
+      - uv sync --locked
+
+  hooks:
+    desc: Install pre-commit hooks
+    cmds:
+      - '{{.UV_RUN}} pre-commit install'
+
+  format:
+    desc: Format Python files
+    cmds:
+      - '{{.UV_RUN}} black {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} isort --color {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} pyupgrade --py310-plus {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} autoflake --in-place {{.PYTHON_FILES}}'
+
+  format:check:
+    desc: Check Black, isort, and autoflake without modifying files
+    cmds:
+      - '{{.UV_RUN}} black --check --diff {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} isort --color --check --diff {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} autoflake --check-diff {{.PYTHON_FILES}}'
+
+  lint:
+    desc: Write mypy, pylint, and bandit reports
+    cmds:
+      - mkdir -p {{.REPORTDIR}}
+      - '{{.UV_RUN}} mypy {{.LINT_FILES}} --config-file=pyproject.toml > {{.REPORTDIR}}/mypy_report.txt || true'
+      - '{{.UV_RUN}} pylint {{.LINT_FILES}} --rcfile=pyproject.toml --exit-zero --output={{.REPORTDIR}}/pylint_report.txt'
+      - '{{.UV_RUN}} bandit --configfile=pyproject.toml --severity-level=medium --recursive --exit-zero --format=txt --output={{.REPORTDIR}}/bandit_report.txt {{.LINT_FILES}}'
+
+  test:
+    desc: Run tests and generate coverage reports
+    cmds:
+      - '{{.UV_RUN}} coverage run -m pytest --exitfirst'
+      - '{{.UV_RUN}} coverage xml'
+      - '{{.UV_RUN}} coverage html --directory docs/exported/coverage'
+      - mv docs/exported/coverage/index.html docs/exported/coverage/report.html
+      - '{{.UV_RUN}} coverage report'
+
+  clean:
+    desc: Remove generated files
+    cmds:
+      - find . -type d -name __pycache__ -prune -exec rm -rf {} +
+      - rm -rf .coverage .linting_reports .mypy_cache .pytest_cache .site coverage.xml dist docs/exported docs/index.md pytest.xml
+
+  _export-docs-artifacts:
+    internal: true
+    cmds:
+      - '{{.UV_RUN}} git-changelog . --output docs/exported/changelog.md --style conventional --template angular'
+      - '{{.UV_RUN}} genbadge coverage --input-file coverage.xml --output-file docs/exported/coverage/badge.svg'
+      - '{{.UV_RUN}} genbadge tests --input-file pytest.xml --output-file docs/exported/tests/badge.svg'
+      - '{{.UV_RUN}} pip-licenses --format markdown --with-authors --with-urls --with-description --output-file docs/exported/third_party_licenses.md'
+      - mkdir -p docs/exported/examples
+      - cp examples/time_series_learning.png docs/exported/examples/time_series_learning.png
+      - cp examples/time_series_generation.png docs/exported/examples/time_series_generation.png
+      - task --list-all > docs/exported/task_options.txt
+
+  docs:
+    desc: Build the documentation
+    cmds:
+      - task: _export-docs-artifacts
+      - '{{.UV_RUN}} mkdocs build'
+
+  bump-version-tag:
+    desc: Create a new version tag
+    vars:
+      RELEASE: '{{.RELEASE | default "false"}}'
+    cmds:
+      - |
+        set -eu
+        git fetch --all --tags
+        VERSION_OLD="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        VERSION_OLD="${VERSION_OLD#v}"
+        VERSION_MAJOR="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f1)"
+        VERSION_MINOR="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f2)"
+        VERSION_PATCH="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f3)"
+        case "{{.PART}}" in
+          major) VERSION_NEW="$((VERSION_MAJOR + 1)).0.0" ;;
+          minor) VERSION_NEW="$VERSION_MAJOR.$((VERSION_MINOR + 1)).0" ;;
+          patch) VERSION_NEW="$VERSION_MAJOR.$VERSION_MINOR.$((VERSION_PATCH + 1))" ;;
+          *) echo "Unsupported version part: {{.PART}}"; exit 1 ;;
+        esac
+        TAG_NEW="v$VERSION_NEW"
+        if [ "{{.RELEASE}}" = "true" ]; then
+          git tag --annotate --message="Bump from $VERSION_OLD to $VERSION_NEW" "$TAG_NEW"
+        else
+          git tag "$TAG_NEW"
+        fi
+
+  deploy-docs:
+    desc: Deploy the documentation
+    requires:
+      vars: [ALIAS]
+    vars:
+      PUSH: '{{.PUSH | default "false"}}'
+      VERSION_POSTFIX: '{{.VERSION_POSTFIX | default ""}}'
+    cmds:
+      - |
+        VERSION_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        VERSION="${VERSION_TAG#v}"
+        MAJOR="$(echo "$VERSION" | cut -d. -f1)"
+        MINOR="$(echo "$VERSION" | cut -d. -f2)"
+        PUSH_FLAG=""
+        if [ "{{.PUSH}}" = "true" ]; then PUSH_FLAG="--push"; fi
+        {{.UV_RUN}} mike deploy $PUSH_FLAG --alias-type symlink --update-aliases "$MAJOR.$MINOR{{.VERSION_POSTFIX}}" "{{.ALIAS}}"
+
+  deploy-package:
+    desc: Build and publish the package
+    requires:
+      vars: [USERNAME, PASSWORD]
+    env:
+      UV_PUBLISH_USERNAME: '{{.USERNAME}}'
+      UV_PUBLISH_PASSWORD: '{{.PASSWORD}}'
+    cmds:
+      - |
+        set -eu
+        uv build
+        uv publish
+
+  push-latest-version-tag:
+    desc: Push the latest version tag
+    cmds:
+      - |
+        TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        git push origin "$TAG"
+
+  release:
+    desc: Test, build, and publish a stable release
+    requires:
+      vars: [USERNAME, PASSWORD]
+    cmds:
+      - task: test
+      - task: bump-version-tag
+        vars:
+          RELEASE: 'true'
+      - task: docs
+      - task: deploy-docs
+        vars:
+          PUSH: 'true'
+          ALIAS: stable
+      - '{{.UV_RUN}} mike set-default --push stable'
+      - task: deploy-package
+        vars:
+          USERNAME: '{{.USERNAME}}'
+          PASSWORD: '{{.PASSWORD}}'
+      - task: push-latest-version-tag

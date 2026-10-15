@@ -40,20 +40,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes curl gcc git
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: Set up poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 - --force
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Set up Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.9"
+          python-version: "3.10"
+          enable-cache: true
 
       - name: Configure git
         run: |
@@ -61,10 +63,11 @@ jobs:
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --locked
 
       - name: Publish to PyPI
+        env:
+          USERNAME: ${{ secrets.PYPI_USER }}
+          PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          poetry run poe release ${{ github.event.inputs.bumped-version-part }} \
-            --username ${{ secrets.PYPI_USER }} \
-            --password ${{ secrets.PYPI_TOKEN }}
+          task release PART=${{ github.event.inputs.bumped-version-part }}

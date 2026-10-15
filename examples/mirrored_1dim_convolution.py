@@ -5,6 +5,7 @@ See Also:
     # https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728
     # https://github.com/jayleicn/TVQAplus/blob/master/model/cnn.py
 """
+
 import matplotlib.pyplot as plt
 import seaborn
 import torch
