@@ -1,101 +1,105 @@
 name: Continuous Integration
 
-on: [pull_request, push, workflow_dispatch]
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 defaults:
-    run:
-        shell: bash
+  run:
+    shell: bash
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    ci:
-        name: CI
-        strategy:
-            matrix:
-                os: [ubuntu-latest] # [ubuntu-latest, macos-latest, windows-latest]
-                python-version: ["3.10", "3.12", "3.13"]
-        runs-on: ${{ matrix.os }}
+  ci:
+    name: CI
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest] # [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    env:
+      os: ${{ matrix.os }}
+      python: ${{ matrix.python-version }}
+
+    steps:
+      - name: Install prerequisites
         env:
-            os: ${{ matrix.os }}
-            python: ${{ matrix.python-version }}
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gcc git
 
-        steps:
-            - name: Install prerequisites
-              env:
-                  DEBIAN_FRONTEND: noninteractive
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install --yes curl gcc git
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - name: Checkout repository
-              uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
+      - name: Set up Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
 
-            - name: Set up Task
-              uses: go-task/setup-task@v2
-              with:
-                  version: 3.x
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.9"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
-            - name: Set up uv
-              uses: astral-sh/setup-uv@v6
-              with:
-                  version: "0.12.9"
-                  python-version: ${{ matrix.python-version }}
-                  enable-cache: true
+      - name: Configure git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
-            - name: Configure git
-              run: |
-                  git config user.name "${GITHUB_ACTOR}"
-                  git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+      - name: Install dependencies
+        run: uv sync --locked
 
-            - name: Install dependencies
-              run: uv sync --locked
+      - name: Install and run pre-commit hooks
+        env:
+          SKIP: no-commit-to-branch
+        run: |
+          task hooks
+          uv run --locked pre-commit run --all-files --show-diff-on-failure
 
-            - name: Install and run pre-commit hooks
-              env:
-                  SKIP: no-commit-to-branch
-              run: |
-                  task hooks
-                  uv run --locked pre-commit run --all-files --show-diff-on-failure
+      - name: Run tests
+        run: task test
 
-            - name: Run tests
-              run: task test
+      - name: Code Coverage Summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
+          format: markdown
+          output: both
 
-            - name: Code Coverage Summary
-              uses: irongut/CodeCoverageSummary@v1.3.0
-              with:
-                  filename: coverage.xml
-                  format: markdown
-                  output: both
+      - name: Build docs
+        run: task docs
 
-            - name: Build docs
-              run: task docs
+      - name: Deploy temporary docs
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.10'
+        run: |
+          task deploy-docs \
+          PUSH=true \
+          ALIAS=pr-${{ github.event.number }} \
+          VERSION_POSTFIX=pr-${{ github.event.number }}
 
-            - name: Deploy temporary docs
-              if: github.event_name == 'pull_request' && matrix.python-version == '3.10'
-              run: |
-                  task deploy-docs \
-                  PUSH=true \
-                  ALIAS=pr-${{ github.event.number }} \
-                  VERSION_POSTFIX=pr-${{ github.event.number }}
+      - name: Write PR note
+        if: github.event_name == 'pull_request'
+        run: |
+          cat <<EOT>> pr_ci_note.md
 
-            - name: Write PR note
-              if: github.event_name == 'pull_request'
-              run: |
-                  cat <<EOT>> pr_ci_note.md
+          [temporary docs](https://github.com/famura/neuralfields/pr-${{ github.event.number }}").
+          [tests](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/tests/report.html)
+          [coverage](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/coverage/report.html)
 
-                  [temporary docs](https://github.com/famura/neuralfields/pr-${{ github.event.number }}").
-                  [tests](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/tests/report.html)
-                  [coverage](https://github.com/famura/neuralfields/pr-${{ github.event.number }}/exported/coverage/report.html)
+          EOT
 
-                  EOT
-
-            - name: Add PR note
-              if: github.event_name == 'pull_request'
-              uses: marocchino/sticky-pull-request-comment@v2.3.1
-              with:
-                  path: pr_ci_note.md
+      - name: Add PR note
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2.3.1
+        with:
+          path: pr_ci_note.md
