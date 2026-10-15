@@ -7,7 +7,7 @@ classifiers = [
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
 ]
-dependencies = ["torch"]
+dependencies = ["torch>=2"]
 description = "A type of potential-based recurrent neural networks implemented with PyTorch"
 license = "MIT"
 maintainers = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}]
@@ -50,6 +50,7 @@ dev = [
   "pip-licenses>=4.0.3,<5.0.0",
   "pre-commit>=2.21.0,<3.0.0",
   "pylint>=2.15.9,<3.0.0",
+  "pymdown-extensions<12.2",
   "pyqt5>=5.15.9,<6.0.0",
   "pytest>=7.2.1,<8.0.0",
   "pytest-cov>=4.0.0,<5.0.0",
