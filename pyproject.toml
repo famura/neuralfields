@@ -1,19 +1,19 @@
 [project]
-authors = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}] 
+authors = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
-] 
-dependencies = ["torch"] 
-description = "A type of potential-based recurrent neural networks implemented with PyTorch" 
-license = "MIT" 
-maintainers = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}] 
-name = "neuralfields" 
-readme = "README.md" 
-requires-python = ">=3.8,<4.0" 
+]
+dependencies = ["torch"]
+description = "A type of potential-based recurrent neural networks implemented with PyTorch"
+license = "MIT"
+maintainers = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}]
+name = "neuralfields"
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
 version = "0.0.0" # DO NOT MODIFY SINCE THE VERSIONS ARE AUTOMATICALLY GENERATED FROM GIT TAGS VIA DUNAMI
 
 [project.urls]
@@ -38,7 +38,6 @@ dev = [
   "git-changelog>=0.6.0,<0.7.0",
   "importlib-metadata>=6.0.0,<7.0.0",
   "isort[colors]>=5.11.4,<6.0.0",
-  "lxml>=4.9.2,<5.0.0",
   "mike>=1.1.2,<2.0.0",
   "mkdocs>=1.4.2,<2.0.0",
   "mkdocs-gen-files>=0.4.0,<0.5.0",
@@ -128,13 +127,13 @@ exclude = [
   'build/',
   'data/',
   'dist/',
-] 
+]
 ignore_missing_imports = true # when no stubs are available, e.g. for matplotlib
 pretty = false # uses too much vspace and degrades the legibitity of the report
-show_column_numbers = true 
-show_error_codes = true 
-show_error_context = false 
-show_traceback = true 
+show_column_numbers = true
+show_error_codes = true
+show_error_context = false
+show_traceback = true
 
 [tool.pylint.format]
 max-args = 15
@@ -161,7 +160,7 @@ disable = [
 ]
 
 [tool.pylint.reports]
-msg-template = "{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" 
+msg-template = "{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
 reports = 'no' # only print the message, not the complete report
 
 [tool.pytest.ini_options]

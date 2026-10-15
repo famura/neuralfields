@@ -29,7 +29,7 @@ tasks:
     cmds:
       - '{{.UV_RUN}} black {{.PYTHON_FILES}}'
       - '{{.UV_RUN}} isort --color {{.PYTHON_FILES}}'
-      - '{{.UV_RUN}} pyupgrade --py38-plus {{.PYTHON_FILES}}'
+      - '{{.UV_RUN}} pyupgrade --py310-plus {{.PYTHON_FILES}}'
       - '{{.UV_RUN}} autoflake --in-place {{.PYTHON_FILES}}'
 
   format:check:
