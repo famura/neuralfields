@@ -887,18 +887,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dunamai"
-version = "1.26.3"
-source = { registry = "https://pypi.org/simple/" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/62/edf5352d8ce1371129ccfe971e6de3a1ce4dc7f9bdc80390fb79856b78d4/dunamai-1.26.3.tar.gz", hash = "sha256:fe2f732186710ee5048044fdbef6c76c6afbb9ee7de4f6d00cf34256e9ec2e7f", size = 46820, upload-time = "2026-10-14T20:13:30.921Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/f4/e3be26f6301535ab4a3a940b09e55615c6286195b07fec9aa2cf8b842563/dunamai-1.26.3-py3-none-any.whl", hash = "sha256:cc486963f21ad5b5b20d95424909ff5029990241eea3e2272865e1542c5fd19f", size = 27628, upload-time = "2026-10-14T20:13:29.974Z" },
-]
-
-[[package]]
 name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple/" }
@@ -2355,7 +2343,6 @@ wheels = [
 
 [[package]]
 name = "neuralfields"
-version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "torch" },
@@ -2366,7 +2353,6 @@ dev = [
     { name = "autoflake" },
     { name = "bandit", extra = ["toml"] },
     { name = "black" },
-    { name = "dunamai" },
     { name = "genbadge", extra = ["coverage", "tests"] },
     { name = "git-changelog" },
     { name = "isort", extra = ["colors"] },
@@ -2402,7 +2388,6 @@ dev = [
     { name = "autoflake", specifier = ">=2.0.0,<3.0.0" },
     { name = "bandit", extras = ["toml"], specifier = ">=1.7.4,<2.0.0" },
     { name = "black", specifier = ">=23.1.0,<24.0.0" },
-    { name = "dunamai", specifier = ">=1.15.0,<2.0.0" },
     { name = "genbadge", extras = ["coverage", "tests"], specifier = ">=1.1.0,<2.0.0" },
     { name = "git-changelog", specifier = ">=2.10.0,<3.0.0" },
     { name = "isort", extras = ["colors"], specifier = ">=9.0.2,<10.0.0" },

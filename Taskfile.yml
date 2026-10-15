@@ -88,15 +88,17 @@ tasks:
       - |
         set -eu
         git fetch --all --tags
-        VERSION_OLD="$({{.UV_RUN}} dunamai from git --format '{base}')"
-        if [ -n "$(git status --porcelain pyproject.toml)" ]; then
-          echo "You have uncommitted changes in pyproject.toml. Stopping."
-          exit 1
-        fi
-        trap 'git restore -- pyproject.toml' 0
-        uv version "$VERSION_OLD" --frozen
-        uv version --bump "{{.PART}}" --frozen
-        VERSION_NEW="$(uv version --short)"
+        VERSION_OLD="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        VERSION_OLD="${VERSION_OLD#v}"
+        VERSION_MAJOR="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f1)"
+        VERSION_MINOR="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f2)"
+        VERSION_PATCH="$(printf '%s\n' "$VERSION_OLD" | cut -d. -f3)"
+        case "{{.PART}}" in
+          major) VERSION_NEW="$((VERSION_MAJOR + 1)).0.0" ;;
+          minor) VERSION_NEW="$VERSION_MAJOR.$((VERSION_MINOR + 1)).0" ;;
+          patch) VERSION_NEW="$VERSION_MAJOR.$VERSION_MINOR.$((VERSION_PATCH + 1))" ;;
+          *) echo "Unsupported version part: {{.PART}}"; exit 1 ;;
+        esac
         TAG_NEW="v$VERSION_NEW"
         if [ "{{.RELEASE}}" = "true" ]; then
           git tag --annotate --message="Bump from $VERSION_OLD to $VERSION_NEW" "$TAG_NEW"
@@ -113,7 +115,8 @@ tasks:
       VERSION_POSTFIX: '{{.VERSION_POSTFIX | default ""}}'
     cmds:
       - |
-        VERSION="$({{.UV_RUN}} dunamai from git --format '{base}')"
+        VERSION_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        VERSION="${VERSION_TAG#v}"
         MAJOR="$(echo "$VERSION" | cut -d. -f1)"
         MINOR="$(echo "$VERSION" | cut -d. -f2)"
         PUSH_FLAG=""
@@ -130,20 +133,15 @@ tasks:
     cmds:
       - |
         set -eu
-        VERSION="$({{.UV_RUN}} dunamai from git --format '{base}')"
-        if [ -n "$(git status --porcelain pyproject.toml)" ]; then
-          echo "You have uncommitted changes in pyproject.toml. Stopping."
-          exit 1
-        fi
-        trap 'git restore -- pyproject.toml' 0
-        uv version "$VERSION" --frozen
         uv build
         uv publish
 
   push-latest-version-tag:
     desc: Push the latest version tag
     cmds:
-      - 'git push origin v$({{.UV_RUN}} dunamai from git --format "{base}")'
+      - |
+        TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+        git push origin "$TAG"
 
   release:
     desc: Test, build, and publish a stable release

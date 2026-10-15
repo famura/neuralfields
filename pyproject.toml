@@ -9,12 +9,12 @@ classifiers = [
 ]
 dependencies = ["torch>=2"]
 description = "A type of potential-based recurrent neural networks implemented with PyTorch"
+dynamic = ["version"]
 license = "MIT"
 maintainers = [{name = "Fabio Muratore", email = "robot-learning@famura.net"}]
 name = "neuralfields"
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
-version = "0.0.0" # DO NOT MODIFY SINCE THE VERSIONS ARE AUTOMATICALLY GENERATED FROM GIT TAGS VIA DUNAMI
 
 [project.urls]
 Documentation = "https://famura.github.io/neuralfields"
@@ -23,7 +23,10 @@ Repository = "https://github.com/famura/neuralfields"
 
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatch-vcs", "hatchling"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["neuralfields"]
@@ -33,7 +36,6 @@ dev = [
   "autoflake>=2.0.0,<3.0.0",
   "bandit[toml]>=1.7.4,<2.0.0",
   "black>=23.1.0,<24.0.0",
-  "dunamai>=1.15.0,<2.0.0",
   "genbadge[coverage,tests]>=1.1.0,<2.0.0",
   "git-changelog>=2.10.0,<3.0.0",
   "isort[colors]>=9.0.2,<10.0.0",
