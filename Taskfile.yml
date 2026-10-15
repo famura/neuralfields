@@ -141,8 +141,8 @@ tasks:
         MAJOR="$(echo "$VERSION" | cut -d. -f1)"
         MINOR="$(echo "$VERSION" | cut -d. -f2)"
         PUSH_FLAG=""
-        if [ "{{.PUSH}}" = "true" ]; then PUSH_FLAG="--force --push"; fi
-        {{.UV_RUN}} mike deploy $PUSH_FLAG --no-redirect --update-aliases "$MAJOR.$MINOR{{.VERSION_POSTFIX}}" "{{.ALIAS}}"
+        if [ "{{.PUSH}}" = "true" ]; then PUSH_FLAG="--push"; fi
+        {{.UV_RUN}} mike deploy $PUSH_FLAG --alias-type symlink --update-aliases "$MAJOR.$MINOR{{.VERSION_POSTFIX}}" "{{.ALIAS}}"
 
   deploy-package:
     desc: Build and publish the package
