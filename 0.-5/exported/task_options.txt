@@ -7,6 +7,7 @@
 [33m* [0m[32mdocs[0m[0m:                          Build the documentation[0m
 [33m* [0m[32mformat[0m[0m:                        Format Python files[0m
 [33m* [0m[32mhooks[0m[0m:                         Install pre-commit hooks[0m
+[33m* [0m[32minstall-prerequisites[0m[0m:         Install system prerequisites for the current OS[0m
 [33m* [0m[32mlint[0m[0m:                          Write mypy, pylint, and bandit reports[0m
 [33m* [0m[32mpush-latest-version-tag[0m[0m:       Push the latest version tag[0m
 [33m* [0m[32mrelease[0m[0m:                       Test, build, and publish a stable release[0m
