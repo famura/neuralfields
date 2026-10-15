@@ -3,62 +3,64 @@
 
 # Getting started with `neuralfields`
 
-This pages explains how to install `neuralfields` via the package management system `poetry`, how the CI/CD pipelines
-are set up using `poe` tasks, and how `pre-commit` hooks are configures to keep the commits clean.
+This pages explains how to install `neuralfields` via the package management system `uv`, how the CI/CD pipelines
+are set up using Task, and how `pre-commit` hooks are configured to keep the commits clean.
 
 ## Installation
 
-### Installation of `poetry`
+### Installation of `uv`
 
-This project is managed by [poetry], a Python packaging and dependency management tool.
-Therefore, `poetry` must be installed _first_.
+This project is managed by [uv], a Python packaging and dependency management tool.
+Therefore, `uv` must be installed _first_.
 
-Please have a look at [the official poetry documentation][poetry-doc-install] on how to install `poetry` on
+Please have a look at [the official uv documentation][uv-doc-install] on how to install `uv` on
 different platforms and under different conditions.
+
+### Installation of Task
+
+The project commands are defined with [Task]. Install Task using the instructions in its official documentation.
 
 ### Installation of `neuralfields`
 
 The installation of this project is quite straightforward. Simply go to the project's directory, and run
 
 ```sh
-poetry install
+uv sync
 ```
 
 !!! tip "No project development intended?"
 
-    If you don't need any development setup, you can pass the `--no-dev` flag to skip the development dependencies.
+    If you don't need any development setup, run `uv sync --no-dev` to skip the development dependencies.
 
 ??? fail "Computer says no..."
 
     Please find a collection of known failure cases below, and feel free to report more.
 
-    | Symptom                                         | Hint                                                            |
-    | :---------------------------------------------- | :-------------------------------------------------------------- |
-    | _Something is wrong with my poetry environment_ | Delete the `.venv` folder and recreate the virtual environment. |
+    | Symptom                                     | Hint                                               |
+    | :------------------------------------------ | :------------------------------------------------- |
+    | _Something is wrong with my uv environment_ | Delete the `.venv` folder and run `uv sync` again. |
 
 ## Dependency Management & Packaging
 
-As mentioned in the [Installation](#installation) section, [poetry] is employed to keep the dependencies of different
-projects from interfering with each other.
-By running `poetry install` in the project's root folder, a separate virtual environment is created into which all
-dependencies are installed automatically (typically takes a few seconds to minutes).
+As mentioned in the [Installation](#installation) section, [uv] keeps the dependencies of different projects from
+interfering with each other. By running `uv sync` in the project's root folder, a separate `.venv` is created into
+which all runtime and development dependencies are installed automatically (typically takes a few seconds to minutes).
 This is similar to running `pip install -r requirements.txt` in an isolated virtual environment.
 
-## Poe Task Runner
+## Project Tasks
 
-This project defines so-called tasks using [poe] which are executed in commit hooks as well as the CI/CD pipeline.
-These tasks are essentially a sequence of commands, and can also be executed locally in the terminal by running
+Common project tasks are exposed through Task and run their Python tools through `uv`:
 
 ```sh
-poetry run poe <task_name>
+task test
 ```
 
 ??? info "Available tasks"
 
-    To get a list of available tasks, execute `poetry run poe --help`
+    To get a list of available tasks, execute `task --list`.
 
     ```sh
-    --8<-- "docs/exported/poe_options.txt"
+    --8<-- "docs/exported/task_options.txt"
     ```
 
 ## Git Hooks
@@ -72,7 +74,7 @@ The hooks are executed before every commit, but can be disabled by adding `--no-
     After you cloned this project and plan to develop in it, don't forget to install these hooks via
 
     ```sh
-    poetry run pre-commit install
+    task hooks
     ```
 
 ??? example "Available pre-commit hooks"
@@ -111,7 +113,7 @@ changes or opening pull requests.
 
 <!-- URLs -->
 [gh-workflows]: https://docs.github.com/en/actions/using-workflows
-[poe]: https://github.com/nat-n/poethepoet/
-[poetry]: https://python-poetry.org/
-[poetry-doc-install]: https://python-poetry.org/docs/#installation
+[Task]: https://taskfile.dev/
+[uv]: https://docs.astral.sh/uv/
+[uv-doc-install]: https://docs.astral.sh/uv/getting-started/installation/
 [pre-commit]: https://pre-commit.com/
