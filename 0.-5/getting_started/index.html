@@ -121,7 +121,7 @@
 <span class=w>        </span><span class=nt>run</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">task docs</span>
 
 <span class=w>      </span><span class="p p-Indicator">-</span><span class=w> </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">Deploy temporary docs</span>
-<span class=w>        </span><span class=nt>if</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">github.event_name == 'pull_request' &amp;&amp; matrix.python-version == '3.10'</span>
+<span class=w>        </span><span class=nt>if</span><span class=p>:</span><span class=w> </span><span class="l l-Scalar l-Scalar-Plain">github.event_name == 'pull_request' &amp;&amp; matrix.os == 'ubuntu-latest' &amp;&amp; matrix.python-version == '3.10'</span>
 <span class=w>        </span><span class=nt>run</span><span class=p>:</span><span class=w> </span><span class="p p-Indicator">|</span>
 <span class=w>          </span><span class=no>task deploy-docs \</span>
 <span class=w>          </span><span class=no>PUSH=true \</span>
