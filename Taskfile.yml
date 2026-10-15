@@ -14,6 +14,27 @@ tasks:
     cmds:
       - task --list
 
+  install-prerequisites:
+    desc: Install system prerequisites for the current OS
+    cmds:
+      - task: install-prerequisites-linux
+      - task: install-prerequisites-macos
+
+  install-prerequisites-linux:
+    internal: true
+    platforms: [linux]
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    cmds:
+      - sudo apt-get update
+      - sudo apt-get install --yes curl gcc git
+
+  install-prerequisites-macos:
+    internal: true
+    platforms: [darwin]
+    cmds:
+      - brew install curl gcc git
+
   sync:
     desc: Install runtime and development dependencies
     cmds:

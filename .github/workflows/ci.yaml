@@ -27,13 +27,6 @@ jobs:
       python: ${{ matrix.python-version }}
 
     steps:
-      - name: Install prerequisites
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes curl gcc git
-
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -43,6 +36,9 @@ jobs:
         uses: go-task/setup-task@v2
         with:
           version: 3.x
+
+      - name: Install prerequisites
+        run: task install-prerequisites
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
