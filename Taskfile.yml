@@ -43,7 +43,7 @@ tasks:
     desc: Write mypy, pylint, and bandit reports
     cmds:
       - mkdir -p {{.REPORTDIR}}
-      - '{{.UV_RUN}} mypy {{.LINT_FILES}} --config-file=pyproject.toml --txt-report={{.REPORTDIR}} > {{.REPORTDIR}}/mypy_report.txt || true'
+      - '{{.UV_RUN}} mypy {{.LINT_FILES}} --config-file=pyproject.toml > {{.REPORTDIR}}/mypy_report.txt || true'
       - '{{.UV_RUN}} pylint {{.LINT_FILES}} --rcfile=pyproject.toml --exit-zero --output={{.REPORTDIR}}/pylint_report.txt'
       - '{{.UV_RUN}} bandit --configfile=pyproject.toml --severity-level=medium --recursive --exit-zero --format=txt --output={{.REPORTDIR}}/bandit_report.txt {{.LINT_FILES}}'
 
