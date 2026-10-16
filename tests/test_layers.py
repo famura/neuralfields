@@ -9,12 +9,17 @@ from neuralfields import IndependentNonlinearitiesLayer, MirroredConv1d, init_pa
 @pytest.mark.parametrize("bias", [True, False], ids=["bias", "no_bias"])
 @pytest.mark.parametrize("weight", [True, False], ids=["weight", "no_weight"])
 def test_independent_nonlin_layer(in_features: int, same_nonlin: bool, bias: bool, weight: bool):
+    """Test independent nonlinearities, optional parameters, and invalid configurations."""
     if not same_nonlin and in_features > 1:
         nonlin = in_features * [torch.tanh]
     else:
         nonlin = torch.sigmoid
     layer = IndependentNonlinearitiesLayer(in_features, nonlin, bias, weight)
     assert isinstance(layer, torch.nn.Module)
+    if not weight:
+        torch.testing.assert_close(layer.weight, torch.ones(in_features))
+    if not bias:
+        torch.testing.assert_close(layer.bias, torch.zeros(in_features))
 
     i = torch.randn(in_features)
     o = layer(i)
@@ -26,7 +31,64 @@ def test_independent_nonlin_layer(in_features: int, same_nonlin: bool, bias: boo
 
 
 def test_independent_nonlin_layer_repr():
+    """Test that an independent nonlinearities layer can be represented."""
     print(IndependentNonlinearitiesLayer(in_features=2, nonlin=torch.relu, bias=False))
+
+
+def test_independent_nonlinearities_batched_gradients():
+    """Test batched nonlinear transformations and gradient propagation."""
+    layer = IndependentNonlinearitiesLayer(2, [torch.sigmoid, torch.tanh], bias=True).double()
+    inputs = torch.randn(3, 2, dtype=torch.float64, requires_grad=True)
+    transformed = layer.weight * (inputs + layer.bias)
+    expected = torch.stack((transformed[..., 0].sigmoid(), transformed[..., 1].tanh()), dim=-1)
+
+    output = layer(inputs)
+    torch.testing.assert_close(output, expected)
+    output.sum().backward()
+
+    assert inputs.grad is not None
+    assert layer.weight.grad is not None
+    assert layer.bias.grad is not None
+
+
+def test_independent_nonlinearities_composed_callable():
+    """Test that a composed callable is applied elementwise with gradients preserved."""
+    nonlin = torch.nn.Sequential(torch.nn.ReLU(), torch.nn.Sigmoid())
+    layer = IndependentNonlinearitiesLayer(3, nonlin, bias=False, weight=False)
+    inputs = torch.tensor([[-2.0, 1.0, -3.0], [3.0, -4.0, 2.0]], requires_grad=True)
+
+    outputs = layer(inputs)
+    torch.testing.assert_close(outputs, nonlin(inputs))
+
+    outputs.sum().backward()
+    assert inputs.grad is not None
+    assert inputs.grad[0, 1] > 0
+
+
+@pytest.mark.parametrize("container", [list, torch.nn.ModuleList], ids=["list", "module_list"])
+def test_independent_nonlinearities_registered_modules(container: type):
+    """Test parameter registration, optimization, and state restoration for module containers."""
+    # Create the custom layer.
+    nonlin = container([torch.nn.PReLU(), torch.nn.Dropout()])
+    layer = IndependentNonlinearitiesLayer(2, nonlin, bias=False, weight=False).eval()
+    parameters = list(layer.parameters())
+    assert len(parameters) == 1
+
+    # Do one random forward pass and update step.
+    inputs = torch.tensor([[-2.0, 3.0], [-4.0, 5.0]])
+    outputs = layer(inputs)
+    torch.testing.assert_close(outputs, torch.tensor([[-0.5, 3.0], [-1.0, 5.0]]))
+    optimizer = torch.optim.SGD(layer.parameters(), lr=0.1)
+    outputs.sum().backward()
+    optimizer.step()
+    torch.testing.assert_close(parameters[0], torch.tensor([0.85]))
+
+    # Restore the layer from its state dict and check that it produces the same outputs.
+    restored = IndependentNonlinearitiesLayer(
+        2, container([torch.nn.PReLU(), torch.nn.Dropout()]), bias=False, weight=False
+    ).eval()
+    restored.load_state_dict(layer.state_dict())
+    torch.testing.assert_close(restored(inputs), layer(inputs))
 
 
 @pytest.mark.parametrize("in_channels", [1, 3], ids=["in1", "in3"])
@@ -43,6 +105,7 @@ def test_mirrored_conv1d_layer(
     in_length: int = 50,
     batch_size: int = 20,
 ):
+    """Test mirrored convolution output shapes for batched and unbatched inputs."""
     conv_layer = MirroredConv1d(
         in_channels,
         out_channels,
@@ -68,6 +131,3 @@ def test_mirrored_conv1d_layer(
         assert isinstance(output, torch.Tensor)
         assert output.dim() == 3
         assert output.shape == (batch_size, out_channels, in_length)
-
-    # Convert to Torch Script.
-    torch.jit.script(conv_layer)

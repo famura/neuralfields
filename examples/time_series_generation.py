@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     # Load the model previously trained with the time_series_learning.py example script.
     try:
-        model = torch.load(EXAMPLES_DIR / "model.pt")
+        model = torch.load(EXAMPLES_DIR / "model.pt", map_location="cpu", weights_only=False)
         assert isinstance(model, PotentialBased)
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -29,18 +29,21 @@ if __name__ == "__main__":
             "run the 'time_series_learning.py' script first."
         )
 
+    model.eval()
+
     # Use the model to generate several time series. This could either be done by providing inputs that are different
     # along the first dimension of the tensor, or by varying the initial hidden state.
     if use_test_inputs:
         try:
-            inputs = torch.load(EXAMPLES_DIR / "data_tst.pt").unsqueeze(0).repeat(num_samples, 1, 1)
+            inputs = torch.load(EXAMPLES_DIR / "data_tst.pt", map_location="cpu", weights_only=True)
+            inputs = inputs.unsqueeze(0).repeat(num_samples, 1, 1)
         except FileNotFoundError:
             raise FileNotFoundError(
                 "There was no file called 'data_tst.pt' found in neuralfields' example directory. Most likely, you "
                 "need to run the 'time_series_learning.py' script first."
             )
         inputs = inputs[:, :len_time_series, :]
-        inputs[1:] += torch.randn(num_samples - 1, len_time_series, model.input_size) / 50
+        inputs[1:] += torch.randn_like(inputs[1:]) / 50
     else:
         inputs = torch.zeros(num_samples, len_time_series, model.input_size)
     if default_hidden:
@@ -53,7 +56,7 @@ if __name__ == "__main__":
     # Plot.
     fig, axs = plt.subplots(1, 1, figsize=(16, 9))
     for idx_ts, gen_ts in enumerate(generated):
-        plt.plot(gen_ts.numpy(), label=f"sample {idx_ts}")
+        plt.plot(gen_ts.cpu().numpy(), label=f"sample {idx_ts}")
     axs.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=inputs.size(0))
     axs.set_xlabel("months")
     axs.set_ylabel("spot count")

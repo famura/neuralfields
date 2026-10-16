@@ -44,11 +44,11 @@ def test_neural_fields(
     potentials_init: Optional[torch.Tensor],
     init_param_kwargs: Optional[dict],
     device: Optional[Union[str, torch.device]],
-    dtype: Union[str, torch.device] = None,
     seed: int = 0,
     batch_size: int = 20,
     len_input_seq: int = 5,
 ):
+    """Test neural field configuration, parameter access, dynamics, and forward shapes."""
     torch.manual_seed(seed)
 
     nf = NeuralField(
@@ -68,9 +68,7 @@ def test_neural_fields(
         kappa_learnable=kappa_learnable,
         potentials_init=potentials_init,
         init_param_kwargs=init_param_kwargs,
-        device=device,
-        dtype=dtype,
-    )
+    ).to(device)
     assert isinstance(nf, PotentialBased)
 
     # Get and set the parameters.
@@ -124,11 +122,9 @@ def test_neural_fields(
         assert isinstance(hidden_seq, torch.Tensor)
         assert hidden_seq.shape == (batch_size, len_input_seq, nf.hidden_size)
 
-    # Convert to Torch Script.
-    # scripted_nf = torch.jit.script(nf)
-
 
 def test_neural_fields_repr():
+    """Test that a neural field can be constructed and represented."""
     nf = NeuralField(input_size=3, hidden_size=4)
     print(nf)
 
@@ -136,6 +132,7 @@ def test_neural_fields_repr():
 @pytest.mark.parametrize("batch_size", [None, 20], ids=["unbatched", "batched"])
 @pytest.mark.parametrize("potentials_init", [None, torch.randn(4)], ids=["default", "random"])
 def test_neural_fields_init_hidden(batch_size: Optional[int], potentials_init: Optional[torch.Tensor]):
+    """Test hidden-state initialization for batched and unbatched inputs."""
     nf = NeuralField(input_size=3, hidden_size=4)
     hidden = nf.init_hidden(batch_size, potentials_init)
     assert isinstance(hidden, torch.Tensor)
@@ -144,17 +141,20 @@ def test_neural_fields_init_hidden(batch_size: Optional[int], potentials_init: O
 @pytest.mark.parametrize("kappa_init", [0.0, 1e-1], ids=["kappa_0", "kappa_1e-1"])
 @pytest.mark.parametrize("tau_init", [1.0, 1e-4], ids=["tau_1", "tau_1e-4"])
 def test_neural_fields_trafos(kappa_init: float, tau_init: float):
+    """Test that kappa and tau are initialized to the requested values."""
     nf = NeuralField(input_size=3, hidden_size=4, kappa_init=kappa_init, tau_init=tau_init)
     assert torch.allclose(nf.kappa, kappa_init * torch.ones(1))
     assert torch.allclose(nf.tau, tau_init * torch.ones(1))
 
 
 def test_neural_fields_init_potentials():
+    """Test that custom initial potentials are stored by the neural field."""
     nf = NeuralField(input_size=6, hidden_size=7, potentials_init=5 * torch.ones(7))
     assert torch.allclose(nf._potentials_init, 5 * torch.ones(7))
 
 
 def test_neural_fields_fail():
+    """Test that invalid configurations and input shapes raise errors."""
     nf = NeuralField(input_size=6, hidden_size=7)
 
     with pytest.raises(ValueError):

@@ -51,10 +51,24 @@ If you use code or ideas from this repository for your projects or research, **p
   sim-to-real transfer. However, the goal of this repository is to make the implementation **as general as possible**,
   such that it could for example be used as generative model.
 
+## Implementation
+
+Both model variants intentionally detach the incoming hidden state at each step.
+Parameters receive gradients from the current step's computation, but gradients do not propagate through the recurrent
+state across time.
+
 ### Time series learning example
+The learning script predicts the next observation from a rolling window of past observations.
+Normalization is fitted on the training half only, and evaluation uses the same window construction as training.
+Test inputs include earlier observed test values: this is one-step-ahead forecasting, not an autonomous rollout.
+
 ![](examples/time_series_learning.png) ![](exported/examples/time_series_learning.png)
 
 ### Time series generation example
+By default, the generation script drives the trained model with noisy test inputs.
+It does not feed predictions back as inputs.
+Run the learning script first.
+
 ![](examples/time_series_generation.png) ![](exported/examples/time_series_generation.png)
 
 ## Getting Started

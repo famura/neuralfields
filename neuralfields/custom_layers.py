@@ -84,7 +84,7 @@ def init_param_(m: torch.nn.Module, **kwargs: Any) -> None:
     elif isinstance(m, IndependentNonlinearitiesLayer):
         # Initialize the network's parameters according to a normal distribution.
         for tensor in (m.weight, m.bias):
-            if tensor is not None:
+            if isinstance(tensor, nn.Parameter):
                 nn.init.normal_(tensor, std=1.0 / math.sqrt(tensor.nelement()))
 
     elif isinstance(m, nn.Linear):
@@ -113,11 +113,12 @@ class IndependentNonlinearitiesLayer(nn.Module):
         """
         Args:
             in_features: Number of dimensions of each input sample.
-            nonlin: The nonlinear function to apply.
+            nonlin: A callable applied to all features, or one callable per feature. Module activations are
+                registered so their parameters, device, and training mode follow this layer.
             bias: If `True`, a learnable bias is subtracted, else no bias is used.
             weight: If `True`, the input is multiplied with a learnable scaling factor, else no weighting is used.
         """
-        if not callable(nonlin):
+        if isinstance(nonlin, nn.ModuleList) or not callable(nonlin):
             if len(nonlin) != in_features:
                 raise RuntimeError(
                     f"Either one, or {in_features} nonlinear functions have been expected, but "
@@ -128,6 +129,10 @@ class IndependentNonlinearitiesLayer(nn.Module):
 
         # Create and initialize the parameters, and the activation function.
         self.nonlin = copy.deepcopy(nonlin) if _is_iterable(nonlin) else nonlin
+        if not callable(self.nonlin):
+            for idx, fcn in enumerate(self.nonlin):
+                if isinstance(fcn, nn.Module):
+                    self.add_module(f"nonlin_{idx}", fcn)
         if weight:
             self.weight = nn.Parameter(torch.empty(in_features, dtype=torch.get_default_dtype()))
         else:
@@ -140,7 +145,7 @@ class IndependentNonlinearitiesLayer(nn.Module):
         init_param_(self)
 
     def extra_repr(self) -> str:
-        return f"in_features={self.weight.numel()}, weight={self.weight}, " f"bias={self.bias}"
+        return f"in_features={self.weight.numel()}, weight={self.weight}, bias={self.bias}"
 
     def forward(self, inp: torch.Tensor) -> torch.Tensor:
         """Apply a bias, scaling, and a nonliterary to each input separately.
@@ -156,8 +161,8 @@ class IndependentNonlinearitiesLayer(nn.Module):
         tmp = self.weight * (inp + self.bias)
 
         # Every dimension runs through an individual nonlinearity.
-        if _is_iterable(self.nonlin):
-            return torch.tensor([fcn(tmp[idx]) for idx, fcn in enumerate(self.nonlin)])
+        if isinstance(self.nonlin, nn.ModuleList) or not callable(self.nonlin):
+            return torch.stack([fcn(tmp[..., idx]) for idx, fcn in enumerate(self.nonlin)], dim=-1)
 
         # All dimensions identically.
         return self.nonlin(tmp)  # type: ignore[operator]
@@ -208,7 +213,7 @@ class MirroredConv1d(_ConvNd):
 
         # Initialize the weights values the same way PyTorch does.
         new_weight_init = torch.zeros(
-            self.orig_weight_shape[0], self.orig_weight_shape[1], self.half_kernel_size, device=device
+            self.orig_weight_shape[0], self.orig_weight_shape[1], self.half_kernel_size, device=device, dtype=dtype
         )
         nn.init.kaiming_uniform_(new_weight_init, a=math.sqrt(5))
 
@@ -227,20 +232,19 @@ class MirroredConv1d(_ConvNd):
             3-dim output tensor just like for [Conv1d][torch.nn.Conv1d].
         """
         # Reconstruct symmetric weights for convolution (original size).
-        mirr_weight = torch.empty(self.orig_weight_shape, dtype=inp.dtype, device=self.weight.device)
+        mirr_weight = torch.cat((self.weight, self.weight[..., : self.orig_weight_shape[2] // 2].flip(-1)), dim=-1)
 
-        # Loop over input channels.
-        for i in range(self.orig_weight_shape[1]):
-            # Fill first half.
-            mirr_weight[:, i, : self.half_kernel_size] = self.weight[:, i, :]
-
-            # Fill second half (flip columns left-right).
-            if self.orig_weight_shape[2] % 2 == 1:
-                # Odd kernel size for convolution, don't flip the last column.
-                mirr_weight[:, i, self.half_kernel_size :] = torch.flip(self.weight[:, i, :], (1,))[:, 1:]
-            else:
-                # Even kernel size for convolution, flip all columns.
-                mirr_weight[:, i, self.half_kernel_size :] = torch.flip(self.weight[:, i, :], (1,))
+        if self.padding_mode != "zeros":
+            padded_inputs = F.pad(inp, self._reversed_padding_repeated_twice, mode=self.padding_mode)
+            return F.conv1d(
+                padded_inputs,
+                mirr_weight,
+                self.bias,
+                self.stride,
+                0,
+                self.dilation,
+                self.groups,
+            )
 
         # Run through the same function as the original PyTorch implementation, but with mirrored kernel.
         return F.conv1d(

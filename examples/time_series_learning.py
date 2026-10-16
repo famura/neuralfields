@@ -14,15 +14,24 @@ def load_and_split_data(dataset_name: str, normalize: bool = False):
         # torch.atleast_2d() adds dimensions to the front, but we want the first dim to be the length of the series.
         data = data.T
 
-    if normalize:
-        data /= max(abs(data.min()), abs(data.max()))
-
     # Make the first half the training set and the second half the test set.
     num_samples = len(data) // 2
+    if normalize:
+        scale = data[:num_samples].abs().max()
+        if scale > 0:
+            data /= scale
+
     data_trn = data[:num_samples]
     data_tst = data[num_samples : num_samples * 2]
 
     return data, data_trn, data_tst
+
+
+def create_windows(data: torch.Tensor, len_window: int) -> tuple[torch.Tensor, torch.Tensor]:
+    """Pair left-padded histories with the next observation to predict."""
+    inputs = torch.nn.functional.pad(data[:-1], (0, 0, len_window - 1, 0))
+    inputs = inputs.unfold(0, len_window, 1).permute(0, 2, 1).contiguous()
+    return inputs, data[1:].unsqueeze(1)
 
 
 def create_figure(dataset_name: str) -> plt.Figure:
@@ -41,8 +50,8 @@ def create_figure(dataset_name: str) -> plt.Figure:
 
 def plot_results(fig: plt.Figure) -> None:
     axs = fig.get_axes()
-    axs[0].plot(predictions_trn, label="predictions")
-    axs[1].plot(predictions_tst, label="predictions")
+    axs[0].plot(numpy.arange(1, len(predictions_trn) + 1), predictions_trn, label="predictions")
+    axs[1].plot(numpy.arange(1, len(predictions_tst) + 1), predictions_tst, label="predictions")
     axs[0].legend(loc="upper right", ncol=2)
     axs[1].legend(loc="upper right", ncol=2)
 
@@ -53,14 +62,22 @@ def simple_training_loop(
     packed_targets: torch.Tensor,
     dataset_name: str,
     normalized_data: bool,
-):
+    num_epochs: int | None = None,
+) -> None:
     # Use a simple heuristic for the optimization hyper-parameters.
     if dataset_name == "monthly_sunspots" and not normalized_data:  # data is in [0, 100] so we need more steps
-        num_epochs = 10001 if isinstance(model, SimpleNeuralField) else 4001
+        if num_epochs is None:
+            num_epochs = 10001 if isinstance(model, SimpleNeuralField) else 4001
         lr = 1e-1
     else:
-        num_epochs = 2501 if isinstance(model, SimpleNeuralField) else 501
+        if num_epochs is None:
+            num_epochs = 2501 if isinstance(model, SimpleNeuralField) else 501
         lr = 1e-2
+
+    model.train()
+    device = next(model.parameters()).device
+    packed_inputs = packed_inputs.to(device=device)
+    packed_targets = packed_targets.to(device=device)
 
     loss_fcn = torch.nn.MSELoss()
     optim = torch.optim.Adam([{"params": model.parameters()}], lr=lr, eps=1e-8)
@@ -71,7 +88,7 @@ def simple_training_loop(
 
         # Make the predictions.
         packed_predictions, _ = model(packed_inputs, hidden=None)
-        loss = loss_fcn(packed_predictions, packed_targets)
+        loss = loss_fcn(packed_predictions[:, -1:, :], packed_targets)
 
         # Call optimizer.
         loss.backward()
@@ -108,40 +125,26 @@ if __name__ == "__main__":
         model = NeuralField(input_size=dim_data, hidden_size=13, output_size=dim_data, conv_out_channels=1)
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
-    # Create data set with rolling forcast scheme.
+    # Create data set with rolling forecast scheme.
     # i t ...
     # i i t ...
     # i i ... t
-    inputs = []
-    targets = []
     len_window = 10  # tested 10 and 20
-    for idx in range(1, data_trn.size(0)):
-        # Slice the input.
-        idx_begin = max(idx - len_window, 0)
-        inp = data_trn[idx_begin:idx, :].view(-1, dim_data)
-
-        # Pad with zeros. This is not special to the models in this repo, but rather to the dataset structure.
-        pad = (0, 0, len_window - inp.size(0), 0)  # from the left pad such that the input length is always 20
-        inp_padded = torch.nn.functional.pad(inp, pad, mode="constant", value=0)
-
-        # Store the data.
-        inputs.append(inp_padded)
-        targets.append(data_trn[idx, :].view(-1, dim_data))
-
-    # Collect all and bring it in the form for batch processing.
-    packed_inputs = torch.stack(inputs, dim=0)
-    packed_targets = torch.stack(inputs, dim=0)
+    packed_inputs, packed_targets = create_windows(data_trn, len_window)
 
     # Run a simple optimization loop.
     simple_training_loop(model, packed_inputs, packed_targets, dataset_name, normalize_data)
 
     # Evaluate model.
+    model.eval()
+    device = next(model.parameters()).device
     with torch.no_grad():
-        predictions_trn, _ = model(data_trn[:-1].unsqueeze(0), hidden=None)
-        predictions_trn = predictions_trn.squeeze(0).detach().numpy()
+        predictions_trn, _ = model(packed_inputs.to(device), hidden=None)
+        predictions_trn = predictions_trn[:, -1, :].cpu().numpy()
 
-        predictions_tst, _ = model(data_tst[:-1].unsqueeze(0), hidden=None)
-        predictions_tst = predictions_tst.squeeze(0).detach().numpy()
+        inputs_tst, _ = create_windows(data_tst, len_window)
+        predictions_tst, _ = model(inputs_tst.to(device), hidden=None)
+        predictions_tst = predictions_tst[:, -1, :].cpu().numpy()
 
     # Safe the model and the associated data.
     torch.save(model, EXAMPLES_DIR / "model.pt")
