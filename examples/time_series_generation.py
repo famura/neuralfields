@@ -60,4 +60,5 @@ if __name__ == "__main__":
     axs.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=inputs.size(0))
     axs.set_xlabel("months")
     axs.set_ylabel("spot count")
+    fig.savefig(EXAMPLES_DIR / "time_series_generation.png")
     plt.show()

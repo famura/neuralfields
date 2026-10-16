@@ -153,4 +153,5 @@ if __name__ == "__main__":
 
     # Plot the results.
     plot_results(fig)
+    fig.savefig(EXAMPLES_DIR / "time_series_learning.png")
     plt.show()
