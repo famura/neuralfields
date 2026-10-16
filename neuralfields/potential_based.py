@@ -13,7 +13,16 @@ class PotentialBased(nn.Module, ABC):
     """Base class for all potential-based recurrent neutral networks."""
 
     _tau_opt: Union[torch.Tensor, nn.Parameter]
+    """Optimizable parameter for the time constant."""
     _kappa_opt: Union[torch.Tensor, nn.Parameter]
+    """Optimizable parameter for the cubic decay."""
+
+    _stimuli_external: torch.Tensor
+    """Buffer to store the external stimuli to the network."""
+    _stimuli_internal: torch.Tensor
+    """Buffer to store the internal stimuli in the network."""
+    _potentials_init: torch.Tensor
+    """Buffer to store the initial potentials of the network."""
 
     _tau_min: Union[float, int] = 1e-5
     r"""Minimum value for the time constant $\tau$ to avoid numerical instabilities."""
@@ -38,7 +47,6 @@ class PotentialBased(nn.Module, ABC):
         output_size: Optional[int] = None,
         input_embedding: Optional[nn.Module] = None,
         output_embedding: Optional[nn.Module] = None,
-        device: Union[str, torch.device] = "cpu",
     ):
         """
         Args:
@@ -61,7 +69,6 @@ class PotentialBased(nn.Module, ABC):
             output_embedding: Optional (custom) [Module][torch.nn.Module] to compute the outputs from the activations.
                 This module must map the activations of shape (`hidden_size`,) to the outputs of shape (`output_size`,)
                 By default, a [linear layer][torch.nn.Linear] without biases is used.
-            device: Device to move this module to (after initialization).
         """
         # Call torch.nn.Module's constructor.
         super().__init__()
@@ -74,42 +81,52 @@ class PotentialBased(nn.Module, ABC):
         self.input_size = input_size
         self._hidden_size = hidden_size // self.num_recurrent_layers  # hidden size per layer
         self.output_size = self._hidden_size if output_size is None else output_size
-        self._stimuli_external = torch.zeros(self.hidden_size, device=device)
-        self._stimuli_internal = torch.zeros(self.hidden_size, device=device)
-
         # Create the common layers.
-        self.input_embedding = input_embedding or nn.Linear(self.input_size, self._hidden_size, bias=False)
-        self.output_embedding = output_embedding or nn.Linear(self._hidden_size, self.output_size, bias=False)
+        self.input_embedding = (
+            input_embedding
+            if input_embedding is not None
+            else nn.Linear(self.input_size, self._hidden_size, bias=False)
+        )
+        self.output_embedding = (
+            output_embedding
+            if output_embedding is not None
+            else nn.Linear(self._hidden_size, self.output_size, bias=False)
+        )
+
+        # Initialize the external and internal stimuli buffers.
+        self.register_buffer("_stimuli_external", torch.zeros(self.hidden_size), persistent=False)
+        self.register_buffer("_stimuli_internal", torch.zeros(self.hidden_size), persistent=False)
 
         # Initialize the values of the potentials.
         if potentials_init is not None:
-            self._potentials_init = potentials_init.detach().clone().to(device=device)
+            potentials_init = potentials_init.detach().clone()
         else:
             if activation_nonlin is torch.sigmoid:
-                self._potentials_init = -7 * torch.ones(1, self.hidden_size, device=device)
+                potentials_init = -7 * torch.ones(1, self.hidden_size)
             else:
-                self._potentials_init = torch.zeros(1, self.hidden_size, device=device)
+                potentials_init = torch.zeros(1, self.hidden_size)
+        self.register_buffer("_potentials_init", potentials_init, persistent=False)
 
         # Initialize the potentials' resting level, i.e., the asymptotic level without stimuli.
-        self.resting_level = nn.Parameter(torch.randn(self.hidden_size, device=device))
+        self.resting_level = nn.Parameter(torch.randn(self.hidden_size))
 
         # Initialize the potential dynamics' time constant.
         self.tau_learnable = tau_learnable
-        if tau_init <= 0:
-            raise ValueError("The time constant tau must be initialized positive.")
-        self._tau_opt_init = PotentialBased.transform_to_opt_space(
-            torch.as_tensor(tau_init - PotentialBased._tau_min, device=device, dtype=torch.get_default_dtype())
+        if tau_init <= PotentialBased._tau_min:
+            raise ValueError(f"The time constant tau must be initialized greater than {PotentialBased._tau_min}.")
+        tau_opt_init = PotentialBased.transform_to_opt_space(
+            torch.as_tensor(tau_init - PotentialBased._tau_min, dtype=torch.get_default_dtype())
         )
-        self._tau_opt = nn.Parameter(self._tau_opt_init.reshape(-1), requires_grad=self.tau_learnable)
+        self._tau_opt = nn.Parameter(tau_opt_init.reshape(-1), requires_grad=self.tau_learnable)
 
         # Initialize the potential dynamics' cubic decay.
         self.kappa_learnable = kappa_learnable
         if kappa_init < 0:
             raise ValueError("The cubic decay kappa must be initialized non-negative.")
-        self._kappa_opt_init = PotentialBased.transform_to_opt_space(
-            torch.as_tensor(kappa_init, device=device, dtype=torch.get_default_dtype()).reshape(-1)
+        kappa_opt_init = PotentialBased.transform_to_opt_space(
+            torch.as_tensor(kappa_init, dtype=torch.get_default_dtype()).reshape(-1)
         )
-        self._kappa_opt = nn.Parameter(self._kappa_opt_init, requires_grad=self.kappa_learnable)
+        self._kappa_opt = nn.Parameter(kappa_opt_init, requires_grad=self.kappa_learnable)
 
     def extra_repr(self) -> str:
         return f"tau_learnable={self.tau_learnable}, kappa_learnable={self.kappa_learnable}"
@@ -125,17 +142,6 @@ class PotentialBased(nn.Module, ABC):
     def param_values(self, param: torch.Tensor):
         """Set the module's parameters from a 1-dimensional array."""
         convert_parameters.vector_to_parameters(param, self.parameters())
-
-    @property
-    def device(self) -> torch.device:
-        """Get the device this model is located on. This assumes that all parts are located on the same device."""
-        assert (
-            self.input_embedding.weight.device
-            == self.resting_level.device
-            == self._tau_opt.device
-            == self._kappa_opt.device
-        )
-        return self.input_embedding.weight.device
 
     @property
     def hidden_size(self) -> int:
@@ -185,7 +191,8 @@ class PotentialBased(nn.Module, ABC):
 
         Args:
             batch_size: Number of batches, i.e., states to track in parallel.
-            potentials_init: Initial values for the potentials to override the networks default values with.
+            potentials_init: Initial values for the potentials to override the networks default values with. Must be
+                on the model's device when provided.
 
         Returns:
             Tensor of shape `(hidden_size,)` if `hidden` was not batched, else of shape `(batch_size, hidden_size)`.
@@ -193,9 +200,9 @@ class PotentialBased(nn.Module, ABC):
         if potentials_init is None:
             if batch_size is None:
                 return self._potentials_init.view(-1)
-            return self._potentials_init.repeat(batch_size, 1).to(device=self.device)
+            return self._potentials_init.repeat(batch_size, 1)
 
-        return potentials_init.to(device=self.device)
+        return potentials_init
 
     @staticmethod
     def _infer_batch_size(inputs: torch.Tensor) -> int:
@@ -220,10 +227,12 @@ class PotentialBased(nn.Module, ABC):
         the model's output.
 
         Args:
-            inputs: Inputs of the current time step, of shape `(input_size,)`, or `(batch_size, input_size)`.
+            inputs: Inputs of the current time step, of shape `(input_size,)`, or `(batch_size, input_size)`, on the
+                model's device.
             hidden: Hidden state which are for the model in this package the potentials, of shape `(hidden_size,)`, or
                 `(batch_size, input_size)`. Pass `None` to leave the initialization to the network which uses
-                [init_hidden][neuralfields.PotentialBased.init_hidden] is called.
+                [init_hidden][neuralfields.PotentialBased.init_hidden] is called. Must be on the model's device when
+                provided.
 
         Returns:
             The outputs, i.e., the (linearly combined) activations, and the most recent potential values, both of shape
@@ -238,11 +247,13 @@ class PotentialBased(nn.Module, ABC):
         in a row.
 
         Args:
-            inputs: Inputs of shape `(batch_size, num_steps, dim_input)` to evaluate the network on.
+            inputs: Inputs of shape `(batch_size, num_steps, dim_input)` to evaluate the network on, on the model's
+                device.
             hidden: Initial values of the hidden states, i.e., the potentials. By default, the network initialized
                 the hidden state to be all zeros. However, via this argument one can set a specific initial value
                 for the potentials. Depending on the shape of `inputs`, `hidden` is of shape `(hidden_size,)` if
-                the input was not batched, else of shape `(batch_size, hidden_size)`.
+                the input was not batched, else of shape `(batch_size, hidden_size)`. Must be on the model's device
+                when provided.
 
         Returns:
             The outputs, i.e., the (linearly combined) activations, and all intermediate potential values, both of
@@ -250,10 +261,10 @@ class PotentialBased(nn.Module, ABC):
         """
         # Bring the sequence of inputs into the shape (batch_size, num_steps, dim_input).
         batch_size = PotentialBased._infer_batch_size(inputs)
-        inputs = inputs.view(batch_size, -1, self.input_size)  # moved to the desired device by forward_one_step() later
+        inputs = inputs.reshape(batch_size, -1, self.input_size)
 
         # If given use the hidden tensor, i.e., the potentials of the last step, else initialize them.
-        hidden = self.init_hidden(batch_size, hidden)  # moved to the desired device by forward_one_step() later
+        hidden = self.init_hidden(batch_size, hidden)
 
         # Iterate over the time dimension. Do this in parallel for all batched which are still along the 1st dimension.
         inputs = inputs.permute(1, 0, 2)  # move time to first dimension for easy iterating
@@ -261,7 +272,7 @@ class PotentialBased(nn.Module, ABC):
         hidden_all = []
         for inp in inputs:
             outputs, hidden_next = self.forward_one_step(inp, hidden)
-            hidden = hidden_next.clone()
+            hidden = hidden_next
             outputs_all.append(outputs)
             hidden_all.append(hidden_next)
 

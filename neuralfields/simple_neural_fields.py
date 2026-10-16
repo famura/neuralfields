@@ -286,7 +286,6 @@ class SimpleNeuralField(PotentialBased):
         capacity_learnable: bool = True,
         potentials_init: Optional[torch.Tensor] = None,
         init_param_kwargs: Optional[dict] = None,
-        device: Union[str, torch.device] = "cpu",
     ):
         """
         Args:
@@ -310,7 +309,6 @@ class SimpleNeuralField(PotentialBased):
             init_param_kwargs: Additional keyword arguments for the policy parameter initialization. For example,
                 `self_centric_init=True` to initialize the interaction between neurons such that they inhibit the
                 others and excite themselves.
-            device: Device to move this module to (after initialization).
         """
         init_param_kwargs = init_param_kwargs if init_param_kwargs is not None else dict()
 
@@ -327,7 +325,6 @@ class SimpleNeuralField(PotentialBased):
             potentials_init=potentials_init,
             input_embedding=input_embedding,
             output_embedding=output_embedding,
-            device=device,
         )
 
         # Create the layer that converts the activations of the previous time step into potentials (internal stimulus).
@@ -346,17 +343,14 @@ class SimpleNeuralField(PotentialBased):
         self.capacity_learnable = capacity_learnable
         if self.potentials_dyn_fcn in [pd_capacity_21, pd_capacity_21_abs, pd_capacity_32, pd_capacity_32_abs]:
             if _is_iterable(activation_nonlin):
-                self._capacity_opt_init = self._init_capacity_heuristic(activation_nonlin[0])
+                capacity_opt_init = self._init_capacity_heuristic(activation_nonlin[0])  # type: ignore[arg-type]
             else:
-                self._capacity_opt_init = self._init_capacity_heuristic(activation_nonlin)  # type: ignore[arg-type]
+                capacity_opt_init = self._init_capacity_heuristic(activation_nonlin)  # type: ignore[arg-type]
         else:
             # Even if the potential function does not include a capacity term, we initialize it to be compatible with
             # custom functions.
-            self._capacity_opt_init = torch.tensor(1.0, dtype=torch.get_default_dtype())
-        self._capacity_opt = nn.Parameter(self._capacity_opt_init.to(device=device), requires_grad=capacity_learnable)
-
-        # Move the complete model to the given device.
-        self.to(device=device)
+            capacity_opt_init = torch.tensor(1.0, dtype=torch.get_default_dtype())
+        self._capacity_opt = nn.Parameter(capacity_opt_init, requires_grad=capacity_learnable)
 
     def _init_capacity_heuristic(self, activation_nonlin: ActivationFunction) -> torch.Tensor:
         """Initialize the value of the capacity parameter $C$ depending on the activation function.
@@ -407,7 +401,7 @@ class SimpleNeuralField(PotentialBased):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Get the batch size, and prepare the inputs accordingly.
         batch_size = PotentialBased._infer_batch_size(inputs)
-        inputs = inputs.view(batch_size, self.input_size).to(device=self.device)
+        inputs = inputs.view(batch_size, self.input_size)
 
         # If given use the hidden tensor, i.e., the potentials of the last step, else initialize them.
         potentials = self.init_hidden(batch_size, hidden)

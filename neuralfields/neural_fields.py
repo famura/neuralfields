@@ -1,4 +1,3 @@
-import multiprocessing as mp
 from typing import Optional, Sequence, Tuple, Union
 
 import torch
@@ -36,8 +35,6 @@ class NeuralField(PotentialBased):
         kappa_learnable: bool = True,
         potentials_init: Optional[torch.Tensor] = None,
         init_param_kwargs: Optional[dict] = None,
-        device: Union[str, torch.device] = "cpu",
-        dtype: Optional[torch.dtype] = None,
     ):
         """
         Args:
@@ -68,8 +65,6 @@ class NeuralField(PotentialBased):
             kappa_learnable: Whether the cubic decay is a learnable parameter or fixed.
             potentials_init: Initial for the potentials, i.e., the network's hidden state.
             init_param_kwargs: Additional keyword arguments for the policy parameter initialization.
-            device: Device to move this module to (after initialization).
-            dtype: Data type forwarded to the initializer of [Conv1d][torch.nn.Conv1d].
         """
         if hidden_size < 2:
             raise ValueError("The humber of hidden neurons hidden_size must be at least 2!")
@@ -77,13 +72,11 @@ class NeuralField(PotentialBased):
             conv_kernel_size = hidden_size
         if conv_padding_mode not in ["circular", "reflect", "zeros"]:
             raise ValueError("The conv_padding_mode must be either 'circular', 'reflect', or 'zeros'!")
-        if not callable(activation_nonlin):
-            raise ValueError("The activation function activation_nonlin must be a callable!")
+        if not callable(activation_nonlin) and not (
+            isinstance(activation_nonlin, Sequence) and all(callable(nonlin) for nonlin in activation_nonlin)
+        ):
+            raise ValueError("The activation_nonlin must be a callable or a sequence of callables!")
         init_param_kwargs = init_param_kwargs if init_param_kwargs is not None else dict()
-
-        # Set the multiprocessing start method to spawn, since PyTorch is using the GPU for convolutions if it can.
-        if mp.get_start_method(allow_none=True) != "spawn":
-            mp.set_start_method("spawn", force=True)
 
         # Create the common layers and parameters.
         super().__init__(
@@ -98,7 +91,6 @@ class NeuralField(PotentialBased):
             potentials_init=potentials_init,
             input_embedding=input_embedding,
             output_embedding=output_embedding,
-            device=device,
         )
 
         # Create the custom convolution layer that models the interconnection of neurons, i.e., their potentials.
@@ -114,8 +106,6 @@ class NeuralField(PotentialBased):
             stride=1,
             dilation=1,
             groups=1,
-            device=device,
-            dtype=dtype,
         )
         init_param_(self.conv_layer, **init_param_kwargs)
 
@@ -128,12 +118,6 @@ class NeuralField(PotentialBased):
         self.potentials_to_activations = IndependentNonlinearitiesLayer(
             self._hidden_size, activation_nonlin, bias=True, weight=True
         )
-
-        # Create the custom output embedding layer that combines the activations.
-        self.output_embedding = nn.Linear(self._hidden_size, self.output_size, bias=False)
-
-        # Move the complete model to the given device.
-        self.to(device=device)
 
     def potentials_dot(self, potentials: torch.Tensor, stimuli: torch.Tensor) -> torch.Tensor:
         r"""Compute the derivative of the neurons' potentials w.r.t. time.
@@ -158,7 +142,7 @@ class NeuralField(PotentialBased):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Get the batch size, and prepare the inputs accordingly.
         batch_size = PotentialBased._infer_batch_size(inputs)
-        inputs = inputs.view(batch_size, self.input_size).to(device=self.device)
+        inputs = inputs.view(batch_size, self.input_size)
 
         # If given use the hidden tensor, i.e., the potentials of the last step, else initialize them.
         potentials = self.init_hidden(batch_size, hidden)

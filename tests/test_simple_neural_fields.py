@@ -59,6 +59,7 @@ def test_simple_neural_fields(
     batch_size: int = 20,
     len_input_seq: int = 5,
 ):
+    """Test simple neural field configuration, dynamics, parameters, and forward shapes."""
     torch.manual_seed(seed)
 
     snf = SimpleNeuralField(
@@ -75,8 +76,7 @@ def test_simple_neural_fields(
         capacity_learnable=capacity_learnable,
         potentials_init=potentials_init,
         init_param_kwargs=init_param_kwargs,
-        device=device,
-    )
+    ).to(device)
     assert isinstance(snf, PotentialBased)
     hidden_size = output_size
 
@@ -131,11 +131,9 @@ def test_simple_neural_fields(
         assert isinstance(hidden_seq, torch.Tensor)
         assert hidden_seq.shape == (batch_size, len_input_seq, snf.hidden_size)
 
-    # Convert to Torch Script.
-    # scripted_nf = torch.jit.script(nf)
-
 
 def test_simple_neural_fields_repr():
+    """Test that a simple neural field can be constructed and represented."""
     snf = SimpleNeuralField(input_size=3, output_size=2, potentials_dyn_fcn=pd_linear)
     print(snf)
 
@@ -143,12 +141,14 @@ def test_simple_neural_fields_repr():
 @pytest.mark.parametrize("batch_size", [None, 20], ids=["unbatched", "batched"])
 @pytest.mark.parametrize("potentials_init", [None, torch.randn(4)], ids=["default", "random"])
 def test_simple_neural_fields_init_hidden(batch_size: Optional[int], potentials_init: Optional[torch.Tensor]):
+    """Test hidden-state initialization for batched and unbatched inputs."""
     snf = SimpleNeuralField(input_size=3, output_size=4, potentials_dyn_fcn=pd_capacity_21)
     hidden = snf.init_hidden(batch_size, potentials_init)
     assert isinstance(hidden, torch.Tensor)
 
 
 def test_simple_neural_fields_init_potentials():
+    """Test that custom initial potentials are stored by the simple neural field."""
     snf = SimpleNeuralField(
         input_size=6, output_size=7, potentials_dyn_fcn=pd_capacity_21, potentials_init=5 * torch.ones(7)
     )
@@ -158,6 +158,7 @@ def test_simple_neural_fields_init_potentials():
 @pytest.mark.parametrize("kappa_init", [0.0, 1e-1], ids=["kappa_0", "kappa_1e-1"])
 @pytest.mark.parametrize("tau_init", [1.0, 1e-4], ids=["tau_1", "tau_1e-4"])
 def test_neural_fields_trafos(kappa_init: float, tau_init: float):
+    """Test that kappa and tau are initialized to the requested values."""
     snf = SimpleNeuralField(
         input_size=6, output_size=7, potentials_dyn_fcn=pd_capacity_21, kappa_init=kappa_init, tau_init=tau_init
     )
@@ -166,6 +167,7 @@ def test_neural_fields_trafos(kappa_init: float, tau_init: float):
 
 
 def test_simple_neural_fields_fail():
+    """Test that unsupported activations, invalid parameters, and inputs raise errors."""
     with pytest.raises(NotImplementedError):
         SimpleNeuralField(input_size=6, output_size=3, potentials_dyn_fcn=pd_capacity_21, activation_nonlin=torch.sqrt)
 
@@ -197,6 +199,7 @@ def test_simple_neural_fields_fail():
     ids=["pd_linear", "pd_capacity_21", "pd_capacity_32_abs"],
 )
 def test_simple_neural_fields_multiple_activation_fcns(potentials_dyn_fcn: ActivationFunction):
+    """Test that multiple activation functions are accepted for potential dynamics."""
     snf = SimpleNeuralField(
         input_size=6,
         output_size=2,
