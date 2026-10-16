@@ -3,8 +3,8 @@
     "version": "0.5",
     "title": "0.5",
     "aliases": [
-      "latest",
-      "stable"
+      "stable",
+      "latest"
     ]
   },
   {
@@ -26,6 +26,13 @@
     "version": "0.1",
     "title": "0.1",
     "aliases": []
+  },
+  {
+    "version": "0.-7",
+    "title": "0.-7",
+    "aliases": [
+      "pr-7"
+    ]
   },
   {
     "version": "0.-6",
